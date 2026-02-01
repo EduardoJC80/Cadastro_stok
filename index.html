@@ -5,22 +5,6 @@
 <title>Produtos</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- MANIFEST PWA -->
-<link rel="manifest" href="data:application/json,{
-  &quot;name&quot;: &quot;Produtos&quot;,
-  &quot;short_name&quot;: &quot;Produtos&quot;,
-  &quot;start_url&quot;: &quot;.&quot;,
-  &quot;display&quot;: &quot;standalone&quot;,
-  &quot;background_color&quot;: &quot;#b91c1c&quot;,
-  &quot;theme_color&quot;: &quot;#b91c1c&quot;,
-  &quot;icons&quot;: [
-    {
-      &quot;src&quot;: &quot;data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23b91c1c'/><text x='50' y='62' font-size='50' text-anchor='middle' fill='white'>📦</text></svg>&quot;,
-      &quot;sizes&quot;: &quot;192x192&quot;,
-      &quot;type&quot;: &quot;image/svg+xml&quot;
-    }
-  ]
-}">
 <meta name="theme-color" content="#b91c1c">
 
 <style>
@@ -34,7 +18,6 @@ body {
     background: #fee2e2;
 }
 
-/* APP */
 .app {
     max-width: 420px;
     margin: auto;
@@ -44,7 +27,6 @@ body {
     flex-direction: column;
 }
 
-/* TOP BAR */
 .topbar {
     background: #b91c1c;
     color: #fff;
@@ -57,9 +39,13 @@ body {
 /* BUSCA */
 .search {
     padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.search input {
+.search input,
+.search select {
     width: 100%;
     padding: 14px;
     border-radius: 14px;
@@ -74,16 +60,12 @@ body {
     flex: 1;
 }
 
-/* ITEM */
 .item {
-    background: #ffffff;
+    background: #fff;
     border-radius: 16px;
     padding: 14px;
     margin-bottom: 12px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
 }
 
 .item-top {
@@ -97,7 +79,6 @@ body {
     color: #6b7280;
 }
 
-/* AÇÕES */
 .acoes {
     display: flex;
     gap: 10px;
@@ -110,10 +91,8 @@ body {
     height: 36px;
     border-radius: 50%;
     font-size: 16px;
-    cursor: pointer;
 }
 
-/* FAB */
 .fab {
     position: fixed;
     bottom: 20px;
@@ -125,9 +104,6 @@ body {
     border-radius: 50%;
     border: none;
     font-size: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     box-shadow: 0 15px 30px rgba(0,0,0,0.3);
 }
 
@@ -158,15 +134,10 @@ body {
     border: 1px solid #d1d5db;
 }
 
-/* BOTÕES */
 .modal-actions {
     display: flex;
     gap: 10px;
 }
-
-.btnSalvar { background: #b91c1c; color: #fff; }
-.btnCancelar { background: #e5e7eb; }
-.btnExcluir { background: #dc2626; color: #fff; }
 
 .modal-actions button {
     flex: 1;
@@ -174,6 +145,10 @@ body {
     border-radius: 12px;
     border: none;
 }
+
+.btnSalvar { background: #b91c1c; color: #fff; }
+.btnCancelar { background: #e5e7eb; }
+.btnExcluir { background: #dc2626; color: #fff; }
 </style>
 </head>
 
@@ -183,7 +158,11 @@ body {
     <div class="topbar">📦 Produtos</div>
 
     <div class="search">
-        <input id="buscar" placeholder="Buscar produto..." onkeyup="buscarProduto()">
+        <select id="filtroMarca" onchange="filtrarPorMarca()">
+            <option value="">Selecionar marca</option>
+        </select>
+
+        <input id="buscar" placeholder="Buscar por nome ou código" onkeyup="buscarProduto()">
     </div>
 
     <div class="lista" id="lista"></div>
@@ -194,7 +173,8 @@ body {
 <!-- MODAL CADASTRO -->
 <div class="modal" id="modalCadastro">
     <div class="modal-content">
-        <h3 id="tituloModal">Produto</h3>
+        <h3>Produto</h3>
+        <input id="marca" placeholder="Marca do produto">
         <input id="nome" placeholder="Nome do produto">
         <input id="codigo" placeholder="Código do produto">
         <div class="modal-actions">
@@ -219,18 +199,22 @@ body {
 let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
 let indexAtual = null;
 
-function render(filtro = "") {
+function render(filtro = "", marcaFiltro = "") {
     lista.innerHTML = "";
+
     produtos
         .filter(p =>
-            p.nome.toLowerCase().includes(filtro.toLowerCase()) ||
-            p.codigo.includes(filtro)
+            (marcaFiltro === "" || p.marca === marcaFiltro) &&
+            (
+                p.nome.toLowerCase().includes(filtro.toLowerCase()) ||
+                p.codigo.includes(filtro)
+            )
         )
         .forEach((p, i) => {
             lista.innerHTML += `
                 <div class="item">
                     <div class="item-top">
-                        <strong>${p.nome}</strong>
+                        <strong>${p.marca} - ${p.nome}</strong>
                         <div class="acoes">
                             <button onclick="editar(${i})">✏️</button>
                             <button onclick="excluir(${i})">🗑️</button>
@@ -242,8 +226,32 @@ function render(filtro = "") {
         });
 }
 
+function carregarMarcas() {
+    filtroMarca.innerHTML = `<option value="">Selecionar marca</option>`;
+
+    let marcas = [...new Set(produtos.map(p => p.marca))];
+
+    if (marcas.length === 0) {
+        abrirCadastro();
+        return;
+    }
+
+    marcas.forEach(m => {
+        filtroMarca.innerHTML += `<option value="${m}">${m}</option>`;
+    });
+}
+
+function filtrarPorMarca() {
+    render(buscar.value, filtroMarca.value);
+}
+
+function buscarProduto() {
+    render(buscar.value, filtroMarca.value);
+}
+
 function abrirCadastro() {
     indexAtual = null;
+    marca.value = "";
     nome.value = "";
     codigo.value = "";
     modalCadastro.style.display = "flex";
@@ -251,22 +259,32 @@ function abrirCadastro() {
 
 function editar(i) {
     indexAtual = i;
+    marca.value = produtos[i].marca;
     nome.value = produtos[i].nome;
     codigo.value = produtos[i].codigo;
     modalCadastro.style.display = "flex";
 }
 
 function salvar() {
-    if (!nome.value || !codigo.value) return;
+    if (!marca.value || !nome.value || !codigo.value) return;
 
     if (indexAtual === null) {
-        produtos.push({ nome: nome.value, codigo: codigo.value });
+        produtos.push({
+            marca: marca.value,
+            nome: nome.value,
+            codigo: codigo.value
+        });
     } else {
-        produtos[indexAtual] = { nome: nome.value, codigo: codigo.value };
+        produtos[indexAtual] = {
+            marca: marca.value,
+            nome: nome.value,
+            codigo: codigo.value
+        };
     }
 
     localStorage.setItem("produtos", JSON.stringify(produtos));
     fecharModal();
+    carregarMarcas();
     render();
 }
 
@@ -279,6 +297,7 @@ function confirmarExclusao() {
     produtos.splice(indexAtual, 1);
     localStorage.setItem("produtos", JSON.stringify(produtos));
     fecharModal();
+    carregarMarcas();
     render();
 }
 
@@ -287,10 +306,7 @@ function fecharModal() {
     modalExcluir.style.display = "none";
 }
 
-function buscarProduto() {
-    render(buscar.value);
-}
-
+carregarMarcas();
 render();
 </script>
 
