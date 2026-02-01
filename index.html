@@ -5,126 +5,104 @@
 <title>Produtos</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta name="theme-color" content="#b91c1c">
+<!-- LIBS -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 
 <style>
-* { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
-body { margin: 0; background: #fee2e2; }
+* { box-sizing: border-box; font-family: Arial }
+body { margin:0; background:#fee2e2 }
 
 .app {
-    max-width: 420px;
-    margin: auto;
-    min-height: 100vh;
-    background: #fef2f2;
-    display: flex;
-    flex-direction: column;
+    max-width:420px;
+    margin:auto;
+    min-height:100vh;
+    background:#fff;
 }
 
 .topbar {
-    background: #b91c1c;
-    color: #fff;
-    padding: 16px;
-    text-align: center;
-    font-size: 20px;
-    font-weight: bold;
+    background:#b91c1c;
+    color:#fff;
+    padding:16px;
+    text-align:center;
+    font-size:20px;
+    font-weight:bold;
 }
 
-.search {
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.area { padding:12px }
+
+select, input, button {
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid #ccc;
+    margin-bottom:10px;
 }
 
-.search input,
-.search select {
-    padding: 14px;
-    border-radius: 14px;
-    border: none;
-    font-size: 16px;
+button {
+    background:#b91c1c;
+    color:#fff;
+    border:none;
+    cursor:pointer;
 }
 
-.lista { padding: 12px; flex: 1; }
+.lista { padding:12px }
 
 .item {
-    background: #fff;
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 12px;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+    background:#fff;
+    padding:14px;
+    border-radius:16px;
+    margin-bottom:12px;
+    box-shadow:0 6px 15px rgba(0,0,0,.15);
 }
 
-.item-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.codigo { font-size: 13px; color: #6b7280; }
-
-.acoes { display: flex; gap: 10px; }
-.acoes button {
-    border: none;
-    background: #fee2e2;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+.codigo {
+    margin-top:6px;
+    color:#2563eb;
+    cursor:pointer;
 }
 
 .fab {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #dc2626;
-    color: #fff;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: none;
-    font-size: 30px;
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    border:none;
+    font-size:30px;
+    background:#dc2626;
+    color:#fff;
 }
 
 .modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.55);
-    display: none;
-    justify-content: center;
-    align-items: center;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.6);
+    display:none;
+    justify-content:center;
+    align-items:center;
 }
 
 .modal-content {
-    background: #fff;
-    width: 90%;
-    max-width: 360px;
-    border-radius: 20px;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    background:#fff;
+    width:90%;
+    max-width:380px;
+    border-radius:18px;
+    padding:18px;
+    text-align:center;
 }
 
-.modal-content input {
-    padding: 14px;
-    border-radius: 12px;
-    border: 1px solid #d1d5db;
+.codigo-grande {
+    font-size:28px;
+    font-weight:bold;
+    margin:10px 0;
 }
 
-.modal-actions {
-    display: flex;
-    gap: 10px;
+#camera {
+    width:100%;
+    height:250px;
 }
-
-.modal-actions button {
-    flex: 1;
-    padding: 12px;
-    border-radius: 12px;
-    border: none;
-}
-
-.btnSalvar { background: #b91c1c; color: #fff; }
-.btnCancelar { background: #e5e7eb; }
-.btnExcluir { background: #dc2626; color: #fff; }
 </style>
 </head>
 
@@ -133,12 +111,14 @@ body { margin: 0; background: #fee2e2; }
 <div class="app">
     <div class="topbar">📦 Produtos</div>
 
-    <div class="search">
-        <select id="filtroMarca" onchange="filtrar()">
-            <option value="">Selecionar marca</option>
+    <div class="area">
+        <select id="filtroMarca" onchange="buscar()">
+            <option value="">Todas as marcas</option>
         </select>
 
-        <input id="buscar" placeholder="Buscar por nome ou código" onkeyup="filtrar()">
+        <input id="filtroNome" placeholder="Buscar pelo nome do produto" onkeyup="buscar()">
+
+        <button onclick="abrirCadastro()">Cadastrar produto</button>
     </div>
 
     <div class="lista" id="lista"></div>
@@ -149,148 +129,168 @@ body { margin: 0; background: #fee2e2; }
 <!-- MODAL CADASTRO -->
 <div class="modal" id="modalCadastro">
     <div class="modal-content">
-        <h3>Produto</h3>
-        <input id="marca" placeholder="Marca do produto">
+        <h3>Cadastro</h3>
+        <input id="marca" placeholder="Marca">
         <input id="nome" placeholder="Nome do produto">
-        <input id="codigo" type="number" placeholder="Código do produto" inputmode="numeric">
-        <div class="modal-actions">
-            <button class="btnCancelar" onclick="fecharModal()">Cancelar</button>
-            <button class="btnSalvar" onclick="salvar()">Salvar</button>
-        </div>
+        <input id="codigo" placeholder="Código (somente números)" inputmode="numeric">
+        <button onclick="abrirCamera()">📷 Ler código</button>
+        <button onclick="salvar()">Salvar</button>
+        <button onclick="fechar()">Cancelar</button>
     </div>
 </div>
 
-<!-- MODAL EXCLUIR -->
-<div class="modal" id="modalExcluir">
+<!-- MODAL CÓDIGO -->
+<div class="modal" id="modalCodigo">
     <div class="modal-content">
-        <h3>Excluir produto?</h3>
-        <div class="modal-actions">
-            <button class="btnCancelar" onclick="fecharModal()">Cancelar</button>
-            <button class="btnExcluir" onclick="confirmarExclusao()">Excluir</button>
-        </div>
+        <div class="codigo-grande" id="codigoGrande"></div>
+        <div id="nomeProduto"></div>
+        <svg id="barcode"></svg>
+        <br><br>
+        <button onclick="fechar()">Fechar</button>
+    </div>
+</div>
+
+<!-- MODAL CÂMERA -->
+<div class="modal" id="modalCamera">
+    <div class="modal-content">
+        <h3>Leia o código</h3>
+        <div id="camera"></div>
+        <button onclick="fecharCamera()">Cancelar</button>
     </div>
 </div>
 
 <script>
 let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-let indexAtual = null;
+let quaggaAtivo = false;
+
+/* SOMENTE NÚMEROS */
+codigo.addEventListener("input", () => {
+    codigo.value = codigo.value.replace(/\D/g, "");
+});
 
 function ordenar() {
-    produtos.sort((a, b) => {
-        let mA = a.marca.toLowerCase();
-        let mB = b.marca.toLowerCase();
-        let nA = a.nome.toLowerCase();
-        let nB = b.nome.toLowerCase();
+    produtos.sort((a,b) =>
+        a.marca.localeCompare(b.marca) ||
+        a.nome.localeCompare(b.nome)
+    );
+}
 
-        if (mA < mB) return -1;
-        if (mA > mB) return 1;
-        if (nA < nB) return -1;
-        if (nA > nB) return 1;
-        return 0;
+function render(listaFiltrada = produtos) {
+    lista.innerHTML = "";
+    listaFiltrada.forEach(p => {
+        lista.innerHTML += `
+            <div class="item">
+                <strong>${p.marca} - ${p.nome}</strong>
+                <div class="codigo" onclick="mostrarCodigo('${p.codigo}','${p.nome}')">
+                    Código: ${p.codigo}
+                </div>
+            </div>
+        `;
     });
 }
 
-function render() {
-    lista.innerHTML = "";
-
-    produtos
-        .filter(p =>
-            (filtroMarca.value === "" || p.marca === filtroMarca.value) &&
-            (
-                p.nome.toLowerCase().includes(buscar.value.toLowerCase()) ||
-                p.codigo.includes(buscar.value)
-            )
-        )
-        .forEach((p, i) => {
-            lista.innerHTML += `
-                <div class="item">
-                    <div class="item-top">
-                        <strong>${p.marca} - ${p.nome}</strong>
-                        <div class="acoes">
-                            <button onclick="editar(${i})">✏️</button>
-                            <button onclick="excluir(${i})">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="codigo">Código: ${p.codigo}</div>
-                </div>
-            `;
-        });
+function atualizarMarcas() {
+    let marcas = [...new Set(produtos.map(p => p.marca))].sort();
+    filtroMarca.innerHTML = `<option value="">Todas as marcas</option>`;
+    marcas.forEach(m => filtroMarca.innerHTML += `<option>${m}</option>`);
 }
 
-function carregarMarcas() {
-    filtroMarca.innerHTML = `<option value="">Selecionar marca</option>`;
-    let marcas = [...new Set(produtos.map(p => p.marca))];
-    marcas.forEach(m => filtroMarca.innerHTML += `<option value="${m}">${m}</option>`);
-}
+/* 🔍 BUSCA POR MARCA + NOME */
+function buscar() {
+    let marcaSelecionada = filtroMarca.value.toLowerCase();
+    let nomeDigitado = filtroNome.value.toLowerCase();
 
-function filtrar() {
-    render();
+    let filtrado = produtos.filter(p =>
+        (marcaSelecionada === "" || p.marca.toLowerCase() === marcaSelecionada) &&
+        p.nome.toLowerCase().includes(nomeDigitado)
+    );
+
+    filtrado.length ? render(filtrado) : render([]);
 }
 
 function abrirCadastro() {
-    indexAtual = null;
-    marca.value = "";
+    marca.value = filtroMarca.value || "";
     nome.value = "";
     codigo.value = "";
-    modalCadastro.style.display = "flex";
-}
-
-function editar(i) {
-    indexAtual = i;
-    marca.value = produtos[i].marca;
-    nome.value = produtos[i].nome;
-    codigo.value = produtos[i].codigo;
     modalCadastro.style.display = "flex";
 }
 
 function salvar() {
     if (!marca.value || !nome.value || !codigo.value) return;
 
-    // garante apenas números
-    let codigoNumerico = codigo.value.replace(/\D/g, "");
+    produtos.push({
+        marca: marca.value,
+        nome: nome.value,
+        codigo: codigo.value
+    });
 
-    if (indexAtual === null) {
-        produtos.push({
-            marca: marca.value,
-            nome: nome.value,
-            codigo: codigoNumerico
-        });
-    } else {
-        produtos[indexAtual] = {
-            marca: marca.value,
-            nome: nome.value,
-            codigo: codigoNumerico
-        };
+    ordenar();
+    localStorage.setItem("produtos", JSON.stringify(produtos));
+    atualizarMarcas();
+    buscar();
+    fechar();
+}
+
+function mostrarCodigo(cod, nomeProd) {
+    codigoGrande.innerText = cod;
+    nomeProduto.innerText = nomeProd;
+
+    JsBarcode("#barcode", cod, {
+        format: "CODE128",
+        height: 90,
+        displayValue: true
+    });
+
+    modalCodigo.style.display = "flex";
+}
+
+/* 📷 CÂMERA */
+function abrirCamera() {
+    modalCamera.style.display = "flex";
+
+    if (quaggaAtivo) {
+        Quagga.stop();
+        quaggaAtivo = false;
     }
 
-    ordenar();
-    localStorage.setItem("produtos", JSON.stringify(produtos));
-    fecharModal();
-    carregarMarcas();
-    render();
+    Quagga.init({
+        inputStream: {
+            type: "LiveStream",
+            target: document.querySelector("#camera"),
+            constraints: {
+                facingMode: "environment"
+            }
+        },
+        decoder: {
+            readers: ["code_128_reader","ean_reader","ean_8_reader"]
+        }
+    }, err => {
+        if (err) return alert("Erro ao acessar câmera");
+        quaggaAtivo = true;
+        Quagga.start();
+    });
+
+    Quagga.onDetected(data => {
+        codigo.value = data.codeResult.code;
+        fecharCamera();
+    });
 }
 
-function excluir(i) {
-    indexAtual = i;
-    modalExcluir.style.display = "flex";
+function fecharCamera() {
+    if (quaggaAtivo) {
+        Quagga.stop();
+        quaggaAtivo = false;
+    }
+    modalCamera.style.display = "none";
 }
 
-function confirmarExclusao() {
-    produtos.splice(indexAtual, 1);
-    ordenar();
-    localStorage.setItem("produtos", JSON.stringify(produtos));
-    fecharModal();
-    carregarMarcas();
-    render();
-}
-
-function fecharModal() {
+function fechar() {
     modalCadastro.style.display = "none";
-    modalExcluir.style.display = "none";
+    modalCodigo.style.display = "none";
 }
 
 ordenar();
-carregarMarcas();
+atualizarMarcas();
 render();
 </script>
 
