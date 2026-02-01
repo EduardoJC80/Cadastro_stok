@@ -8,15 +8,8 @@
 <meta name="theme-color" content="#b91c1c">
 
 <style>
-* {
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
-    margin: 0;
-    background: #fee2e2;
-}
+* { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+body { margin: 0; background: #fee2e2; }
 
 .app {
     max-width: 420px;
@@ -36,7 +29,6 @@ body {
     font-weight: bold;
 }
 
-/* BUSCA */
 .search {
     padding: 12px;
     display: flex;
@@ -46,19 +38,13 @@ body {
 
 .search input,
 .search select {
-    width: 100%;
     padding: 14px;
     border-radius: 14px;
     border: none;
     font-size: 16px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
 
-/* LISTA */
-.lista {
-    padding: 12px;
-    flex: 1;
-}
+.lista { padding: 12px; flex: 1; }
 
 .item {
     background: #fff;
@@ -74,23 +60,15 @@ body {
     align-items: center;
 }
 
-.codigo {
-    font-size: 13px;
-    color: #6b7280;
-}
+.codigo { font-size: 13px; color: #6b7280; }
 
-.acoes {
-    display: flex;
-    gap: 10px;
-}
-
+.acoes { display: flex; gap: 10px; }
 .acoes button {
     border: none;
     background: #fee2e2;
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    font-size: 16px;
 }
 
 .fab {
@@ -104,10 +82,8 @@ body {
     border-radius: 50%;
     border: none;
     font-size: 30px;
-    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
 }
 
-/* MODAL */
 .modal {
     position: fixed;
     inset: 0;
@@ -158,11 +134,11 @@ body {
     <div class="topbar">📦 Produtos</div>
 
     <div class="search">
-        <select id="filtroMarca" onchange="filtrarPorMarca()">
+        <select id="filtroMarca" onchange="filtrar()">
             <option value="">Selecionar marca</option>
         </select>
 
-        <input id="buscar" placeholder="Buscar por nome ou código" onkeyup="buscarProduto()">
+        <input id="buscar" placeholder="Buscar por nome ou código" onkeyup="filtrar()">
     </div>
 
     <div class="lista" id="lista"></div>
@@ -176,7 +152,7 @@ body {
         <h3>Produto</h3>
         <input id="marca" placeholder="Marca do produto">
         <input id="nome" placeholder="Nome do produto">
-        <input id="codigo" placeholder="Código do produto">
+        <input id="codigo" type="number" placeholder="Código do produto" inputmode="numeric">
         <div class="modal-actions">
             <button class="btnCancelar" onclick="fecharModal()">Cancelar</button>
             <button class="btnSalvar" onclick="salvar()">Salvar</button>
@@ -199,15 +175,30 @@ body {
 let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
 let indexAtual = null;
 
-function render(filtro = "", marcaFiltro = "") {
+function ordenar() {
+    produtos.sort((a, b) => {
+        let mA = a.marca.toLowerCase();
+        let mB = b.marca.toLowerCase();
+        let nA = a.nome.toLowerCase();
+        let nB = b.nome.toLowerCase();
+
+        if (mA < mB) return -1;
+        if (mA > mB) return 1;
+        if (nA < nB) return -1;
+        if (nA > nB) return 1;
+        return 0;
+    });
+}
+
+function render() {
     lista.innerHTML = "";
 
     produtos
         .filter(p =>
-            (marcaFiltro === "" || p.marca === marcaFiltro) &&
+            (filtroMarca.value === "" || p.marca === filtroMarca.value) &&
             (
-                p.nome.toLowerCase().includes(filtro.toLowerCase()) ||
-                p.codigo.includes(filtro)
+                p.nome.toLowerCase().includes(buscar.value.toLowerCase()) ||
+                p.codigo.includes(buscar.value)
             )
         )
         .forEach((p, i) => {
@@ -228,25 +219,12 @@ function render(filtro = "", marcaFiltro = "") {
 
 function carregarMarcas() {
     filtroMarca.innerHTML = `<option value="">Selecionar marca</option>`;
-
     let marcas = [...new Set(produtos.map(p => p.marca))];
-
-    if (marcas.length === 0) {
-        abrirCadastro();
-        return;
-    }
-
-    marcas.forEach(m => {
-        filtroMarca.innerHTML += `<option value="${m}">${m}</option>`;
-    });
+    marcas.forEach(m => filtroMarca.innerHTML += `<option value="${m}">${m}</option>`);
 }
 
-function filtrarPorMarca() {
-    render(buscar.value, filtroMarca.value);
-}
-
-function buscarProduto() {
-    render(buscar.value, filtroMarca.value);
+function filtrar() {
+    render();
 }
 
 function abrirCadastro() {
@@ -268,20 +246,24 @@ function editar(i) {
 function salvar() {
     if (!marca.value || !nome.value || !codigo.value) return;
 
+    // garante apenas números
+    let codigoNumerico = codigo.value.replace(/\D/g, "");
+
     if (indexAtual === null) {
         produtos.push({
             marca: marca.value,
             nome: nome.value,
-            codigo: codigo.value
+            codigo: codigoNumerico
         });
     } else {
         produtos[indexAtual] = {
             marca: marca.value,
             nome: nome.value,
-            codigo: codigo.value
+            codigo: codigoNumerico
         };
     }
 
+    ordenar();
     localStorage.setItem("produtos", JSON.stringify(produtos));
     fecharModal();
     carregarMarcas();
@@ -295,6 +277,7 @@ function excluir(i) {
 
 function confirmarExclusao() {
     produtos.splice(indexAtual, 1);
+    ordenar();
     localStorage.setItem("produtos", JSON.stringify(produtos));
     fecharModal();
     carregarMarcas();
@@ -306,6 +289,7 @@ function fecharModal() {
     modalExcluir.style.display = "none";
 }
 
+ordenar();
 carregarMarcas();
 render();
 </script>
