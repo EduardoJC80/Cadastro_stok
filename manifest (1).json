@@ -1,0 +1,12 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "fullscreen",
+  "name": "Cadastrar Produtos",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Cadastrar Produtos",
+  "start_url": "/",
+  "theme_color": "#b91c1c",
+  "lang": "pt"
+}
