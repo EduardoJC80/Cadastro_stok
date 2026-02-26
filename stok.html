@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDV Futurista Scroll</title>
+<title>PDV Futurista Categorias</title>
 
-<!-- Bootstrap 5 -->
+<!-- Bootstrap -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -15,309 +15,282 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
-<!-- Html5 QR e JsBarcode -->
-<script src="https://unpkg.com/html5-qrcode"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
 <style>
-body {
-    background: linear-gradient(120deg, #0f172a, #1e293b);
-    color: white;
-    min-height: 100vh;
-    padding: 30px 0;
-    font-family: 'Segoe UI', sans-serif;
+body{
+    background: linear-gradient(120deg,#0f172a,#1e293b);
+    color:white;
+    padding:40px 0;
+    font-family:'Segoe UI',sans-serif;
+}
+.card-custom{
+    background:#1e293b;
+    border-radius:20px;
+    padding:30px;
+    box-shadow:0 0 40px rgba(0,255,200,0.25);
+}
+h2{ color:#00ffc3; }
+
+.categoria-box{
+    margin-top:40px;
+    background:#0f172a;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 0 20px rgba(0,255,200,0.15);
 }
 
-.card {
-    border-radius: 20px;
-    background: rgba(30,41,59,0.95);
-    padding: 30px;
-    box-shadow: 0 0 40px rgba(0,255,200,0.3);
-}
-
-h2 { color: #00ffc3; }
-
-.btn-edit { background: #facc15; color: black; }
-.btn-delete { background: #ef4444; color: white; }
-
-.codigo-click {
-    color: #00ffc3;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.table-scroll {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.modal-bg {
-    position: fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:black;
-    display:none;
-    justify-content:center;
+.categoria-title{
+    color:#00ffc3;
+    display:flex;
+    justify-content:space-between;
     align-items:center;
-    z-index: 9999;
 }
 
-#reader { width:100%; }
+.edit-icon{
+    cursor:pointer;
+    font-size:18px;
+}
 </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
-        <h2 class="text-center mb-4">Cadastro PDV Futurista</h2>
+<div class="card-custom">
 
-        <div class="mb-3">
-            <input type="text" id="marca" class="form-control" placeholder="Marca">
-        </div>
-        <div class="mb-3">
-            <input type="text" id="produto" class="form-control" placeholder="Produto">
-        </div>
-        <div class="mb-3">
-            <input type="text" id="codigo" class="form-control" placeholder="Código do Produto">
-        </div>
+<h2 class="text-center mb-4">Cadastro de Produtos</h2>
 
-        <div class="d-flex gap-2 flex-wrap mb-4">
-            <button class="btn btn-success flex-fill" onclick="abrirCamera()">📷 Ler Código</button>
-            <button class="btn btn-primary flex-fill" id="btnCadastrar" onclick="acaoPrincipal()">Cadastrar</button>
-            <button class="btn btn-danger flex-fill" id="btnLimpar" onclick="limparCampos()" style="display:none">Limpar</button>
-        </div>
+<div class="row g-3">
 
-        <h4 class="text-center">Produtos Cadastrados</h4>
-
-        <!-- Busca externa -->
-        <div class="mb-3 text-end">
-            <input type="text" id="buscaExterna" class="form-control"
-                   placeholder="🔍 Buscar produto..."
-                   style="max-width:300px; margin-left:auto;">
-        </div>
-
-        <div class="table-scroll">
-            <table id="produtosTable" class="table table-dark table-striped table-hover table-bordered" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>Marca</th>
-                        <th>Produto</th>
-                        <th>Código</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
+<div class="col-md-3">
+<input type="text" id="categoria" class="form-control" placeholder="Categoria (opcional)">
 </div>
 
-<!-- Modal Camera -->
-<div class="modal-bg" id="modalCamera">
-    <div class="card p-3" style="width:350px;text-align:center;">
-        <h5>Ler Código de Barras</h5>
-        <div id="reader"></div>
-        <button class="btn btn-secondary mt-3" onclick="fecharCamera()">Cancelar</button>
-    </div>
+<div class="col-md-3">
+<input type="text" id="marca" class="form-control" placeholder="Marca">
 </div>
 
-<!-- Modal Barcode Tela Cheia -->
-<div class="modal-bg" id="modalBarcode">
-    <div style="position:absolute; top:20px; right:20px;">
-        <button class="btn btn-light" onclick="fecharBarcode()">Fechar ✖</button>
-    </div>
+<div class="col-md-3">
+<input type="text" id="produto" class="form-control" placeholder="Produto">
+</div>
 
-    <div style="display:flex; flex-direction:column;
-                justify-content:center;
-                align-items:center;
-                height:100%; width:100%;">
+<div class="col-md-3">
+<input type="text" id="codigo" class="form-control" placeholder="Código">
+</div>
 
-        <svg id="barcode" style="width:90%; height:200px;"></svg>
-        <h3 id="codigoTexto" style="color:white; margin-top:20px;"></h3>
-    </div>
+<div class="col-12 d-flex gap-2">
+<button class="btn btn-primary flex-fill" id="btnCadastrar" onclick="acaoPrincipal()">Cadastrar</button>
+</div>
+
+</div>
+
+<hr class="my-4">
+
+<input type="text" id="buscaGlobal" class="form-control mb-4" placeholder="🔍 Buscar produto...">
+
+<div id="areaCategorias"></div>
+
+</div>
+</div>
+
+<!-- Modal Editar Categoria -->
+<div class="modal fade" id="modalEditarCategoria" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content bg-dark text-white">
+<div class="modal-header">
+<h5 class="modal-title">Editar Categoria</h5>
+<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input type="text" id="novaCategoria" class="form-control">
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-success" onclick="salvarNomeCategoria()">Salvar</button>
+</div>
+</div>
+</div>
 </div>
 
 <script>
-const TOKEN = "AVqJ1IQT43zeLcJq3kMwYg"
-var produtos = JSON.parse(localStorage.getItem("produtos")) || []
-var html5QrCode = null
-var editandoIndex = null
-var table = null
 
-function beep(){
-    var ctx = new (window.AudioContext || window.webkitAudioContext)()
-    var osc = ctx.createOscillator()
-    osc.frequency.setValueAtTime(900, ctx.currentTime)
-    osc.connect(ctx.destination)
-    osc.start()
-    setTimeout(()=>osc.stop(),120)
-}
+var produtos = JSON.parse(localStorage.getItem("produtos")) || []
+var editandoIndex = null
+var categoriaAntiga = null
+var tabelas = []
+var modalEditar = null
+
+document.addEventListener("DOMContentLoaded", function(){
+    modalEditar = new bootstrap.Modal(document.getElementById('modalEditarCategoria'))
+    listar()
+})
 
 function salvarLocal(){
     localStorage.setItem("produtos", JSON.stringify(produtos))
 }
 
-function atualizarBotaoLimpar(){
-    btnLimpar.style.display =
-        (marca.value || produto.value || codigo.value) ? 'block':'none'
-}
-
 function limparCampos(){
-    marca.value=''
-    produto.value=''
-    codigo.value=''
+    categoria.value=""
+    marca.value=""
+    produto.value=""
+    codigo.value=""
     editandoIndex=null
     btnCadastrar.innerText="Cadastrar"
-    atualizarBotaoLimpar()
-}
-
-async function buscarProduto(cod){
-    if(!cod || cod.length<8) return
-    try{
-        const resp=await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${cod}`,{
-            headers:{ "X-Cosmos-Token": TOKEN }
-        })
-        if(!resp.ok) return
-        const data=await resp.json()
-        produto.value=data.description||''
-        marca.value=data.brand ? data.brand.name : ''
-        atualizarBotaoLimpar()
-    }catch(e){}
 }
 
 function acaoPrincipal(){
     if(editandoIndex!==null) salvarEdicao()
-    else cadastrarManual()
+    else cadastrar()
 }
 
-function cadastrarManual(){
-    if(!marca.value||!produto.value||!codigo.value){
-        alert("Preencha todos os campos!")
+function cadastrar(){
+
+    if(!produto.value || !codigo.value){
+        alert("Preencha Produto e Código!")
         return
     }
-    produtos.push({marca:marca.value,produto:produto.value,codigo:codigo.value})
+
+    let categoriaFinal = categoria.value.trim()===""
+        ? "Sem Categoria"
+        : categoria.value.trim()
+
+    produtos.push({
+        categoria: categoriaFinal,
+        marca: marca.value,
+        produto: produto.value,
+        codigo: codigo.value
+    })
+
     salvarLocal()
     limparCampos()
     listar()
 }
 
-function editar(index){
-    editandoIndex=index
-    marca.value=produtos[index].marca
-    produto.value=produtos[index].produto
-    codigo.value=produtos[index].codigo
-    btnCadastrar.innerText="Salvar"
-    atualizarBotaoLimpar()
+function editar(i){
+    editandoIndex=i
+    categoria.value=produtos[i].categoria==="Sem Categoria"?"":produtos[i].categoria
+    marca.value=produtos[i].marca
+    produto.value=produtos[i].produto
+    codigo.value=produtos[i].codigo
+    btnCadastrar.innerText="Salvar Alteração"
+    window.scrollTo({top:0,behavior:"smooth"})
 }
 
 function salvarEdicao(){
+
+    let categoriaFinal = categoria.value.trim()===""
+        ? "Sem Categoria"
+        : categoria.value.trim()
+
     produtos[editandoIndex]={
-        marca:marca.value,
-        produto:produto.value,
-        codigo:codigo.value
+        categoria: categoriaFinal,
+        marca: marca.value,
+        produto: produto.value,
+        codigo: codigo.value
     }
+
     salvarLocal()
     limparCampos()
     listar()
 }
 
-function excluir(index){
-    if(confirm("Deseja excluir este produto?")){
-        produtos.splice(index,1)
+function excluir(i){
+    if(confirm("Deseja excluir?")){
+        produtos.splice(i,1)
         salvarLocal()
         listar()
     }
 }
 
+function abrirEditarCategoria(nome){
+    categoriaAntiga = nome.trim()
+    novaCategoria.value = nome==="Sem Categoria"?"":nome
+    modalEditar.show()
+}
+
+function salvarNomeCategoria(){
+
+    let novoNome = novaCategoria.value.trim()===""
+        ? "Sem Categoria"
+        : novaCategoria.value.trim()
+
+    produtos.forEach(p=>{
+        if(p.categoria.trim() === categoriaAntiga){
+            p.categoria = novoNome
+        }
+    })
+
+    salvarLocal()
+    listar()
+    modalEditar.hide()
+}
+
 function listar(){
-    if(table) table.destroy()
-    var tbody=$("#produtosTable tbody")
-    tbody.empty()
+
+    tabelas.forEach(t=>t.destroy())
+    tabelas=[]
+    areaCategorias.innerHTML=""
+
+    var categorias={}
 
     produtos.forEach((p,i)=>{
-        tbody.append(`<tr>
-            <td>${p.marca}</td>
-            <td>${p.produto}</td>
-            <td><span class="codigo-click" onclick="gerarBarcode('${p.codigo}')">${p.codigo}</span></td>
-            <td>
-                <button class="btn btn-sm btn-edit me-1" onclick="editar(${i})">Editar</button>
-                <button class="btn btn-sm btn-delete" onclick="excluir(${i})">Excluir</button>
-            </td>
-        </tr>`)
+        if(!categorias[p.categoria]) categorias[p.categoria]=[]
+        categorias[p.categoria].push({...p,index:i})
     })
 
-    table=$('#produtosTable').DataTable({
-        language:{ url:'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-        paging:false,
-        info:false,
-        searching:true,
-        dom:'t'
+    let ordemCategorias = Object.keys(categorias).sort((a,b)=>{
+        if(a==="Sem Categoria") return 1
+        if(b==="Sem Categoria") return -1
+        return a.localeCompare(b)
     })
-}
 
-document.getElementById("buscaExterna")
-.addEventListener("keyup", function(){
-    table.search(this.value).draw()
-})
+    ordemCategorias.forEach(cat=>{
+        let id="tab_"+cat.replace(/\s/g,"_")
 
-function gerarBarcode(cod){
-    modalBarcode.style.display='flex'
-    codigoTexto.innerText = cod
+        areaCategorias.innerHTML+=`
+        <div class="categoria-box">
+        <h4 class="categoria-title">
+            ${cat}
+            <span class="edit-icon" onclick="abrirEditarCategoria('${cat}')">🖊</span>
+        </h4>
+        <div class="table-responsive">
+        <table id="${id}" class="table table-dark table-striped table-bordered w-100">
+        <thead>
+        <tr>
+        <th>Marca</th>
+        <th>Produto</th>
+        <th>Código</th>
+        <th>Ações</th>
+        </tr>
+        </thead>
+        <tbody>
+        ${categorias[cat].map(p=>`
+        <tr>
+        <td>${p.marca||""}</td>
+        <td>${p.produto}</td>
+        <td>${p.codigo}</td>
+        <td>
+        <button class="btn btn-sm btn-warning" onclick="editar(${p.index})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="excluir(${p.index})">Excluir</button>
+        </td>
+        </tr>
+        `).join("")}
+        </tbody>
+        </table>
+        </div>
+        </div>
+        `
 
-    let formato="CODE128"
-    if(cod.length===13 && /^\d+$/.test(cod)){
-        formato="EAN13"
-    }
-
-    JsBarcode("#barcode", cod, {
-        format:formato,
-        width:3,
-        height:180,
-        displayValue:false,
-        margin:20
-    })
-}
-
-function fecharBarcode(){
-    modalBarcode.style.display='none'
-}
-
-function abrirCamera(){
-    modalCamera.style.display='flex'
-    html5QrCode = new Html5Qrcode("reader")
-
-    html5QrCode.start(
-        {facingMode:"environment"},
-        {fps:20, qrbox:{width:280,height:150}},
-        function(decodedText){
-            codigo.value=decodedText
-            beep()
-            buscarProduto(decodedText)
-            atualizarBotaoLimpar()
-            fecharCamera()
-        }
-    )
-}
-
-function fecharCamera(){
-    if(html5QrCode){
-        html5QrCode.stop().then(()=>{
-            modalCamera.style.display='none'
+        let tabela=$('#'+id).DataTable({
+            paging:false,
+            info:false,
+            searching:true,
+            dom:'t',
+            responsive:true
         })
-    }
+
+        tabelas.push(tabela)
+    })
 }
 
-codigo.addEventListener("input", function(){
-    atualizarBotaoLimpar()
-    buscarProduto(codigo.value)
-})
-
-marca.addEventListener("input", atualizarBotaoLimpar)
-produto.addEventListener("input", atualizarBotaoLimpar)
-
-listar()
 </script>
 
 </body>
