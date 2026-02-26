@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cadastro de produtos</title>
+<title>PDV Futurista Completo</title>
 
 <!-- Bootstrap -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -46,11 +46,6 @@ display:flex;
 justify-content:space-between;
 align-items:center;
 color:#00ffc3;
-}
-
-.edit-cat{
-cursor:pointer;
-font-size:18px;
 }
 
 .codigo-click{
@@ -106,7 +101,7 @@ z-index:9999;
 </div>
 </div>
 
-<!-- MODAL EDITAR PRODUTO -->
+<!-- Modal Editar Produto -->
 <div class="modal fade" id="modalEditarProduto">
 <div class="modal-dialog">
 <div class="modal-content bg-dark text-white">
@@ -115,10 +110,10 @@ z-index:9999;
 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
 </div>
 <div class="modal-body">
-<input type="text" id="editCategoria" class="form-control mb-2" placeholder="Categoria">
-<input type="text" id="editMarca" class="form-control mb-2" placeholder="Marca">
-<input type="text" id="editProduto" class="form-control mb-2" placeholder="Produto">
-<input type="text" id="editCodigo" class="form-control" placeholder="Código">
+<input type="text" id="editCategoria" class="form-control mb-2">
+<input type="text" id="editMarca" class="form-control mb-2">
+<input type="text" id="editProduto" class="form-control mb-2">
+<input type="text" id="editCodigo" class="form-control">
 </div>
 <div class="modal-footer">
 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -128,7 +123,7 @@ z-index:9999;
 </div>
 </div>
 
-<!-- MODAL CÂMERA -->
+<!-- Modal Camera -->
 <div class="modal-bg" id="modalCamera">
 <div class="card p-3" style="width:350px;text-align:center;">
 <h5>Ler Código</h5>
@@ -137,7 +132,7 @@ z-index:9999;
 </div>
 </div>
 
-<!-- MODAL BARCODE -->
+<!-- Modal Barcode -->
 <div class="modal-bg" id="modalBarcode">
 <div style="position:absolute; top:20px; right:20px;">
 <button class="btn btn-light" onclick="fecharBarcode()">Fechar ✖</button>
@@ -149,7 +144,7 @@ z-index:9999;
 </div>
 
 <script>
-const TOKEN="SEU_TOKEN_AQUI"
+const TOKEN="AVqJ1IQT43zeLcJq3kMwYg"
 
 let produtos=JSON.parse(localStorage.getItem("produtos"))||[]
 let editandoIndex=null
@@ -158,7 +153,20 @@ let tabelas=[]
 let modalEditarProduto
 
 document.addEventListener("DOMContentLoaded",()=>{
+
 modalEditarProduto=new bootstrap.Modal(document.getElementById("modalEditarProduto"))
+
+codigoInput.addEventListener("blur",()=>{
+buscarProduto(codigoInput.value.trim())
+})
+
+codigoInput.addEventListener("keydown",(e)=>{
+if(e.key==="Enter"){
+e.preventDefault()
+buscarProduto(codigoInput.value.trim())
+}
+})
+
 listar()
 })
 
@@ -191,10 +199,12 @@ codigo:codigoInput.value
 })
 
 salvarLocal()
+
 categoriaInput.value=""
 marcaInput.value=""
 produtoInput.value=""
 codigoInput.value=""
+
 listar()
 }
 
@@ -255,7 +265,6 @@ div.innerHTML=`
 <div class="categoria-title">
 <span>${cat}</span>
 </div>
-
 <div class="table-responsive">
 <table id="${id}" class="table table-dark table-striped table-bordered w-100">
 <thead>
@@ -297,7 +306,7 @@ tabelas.push(tabela)
 })
 }
 
-/* ================= CAMERA ================= */
+/* CAMERA */
 
 function abrirCamera(){
 modalCamera.style.display="flex"
@@ -323,22 +332,38 @@ modalCamera.style.display="none"
 }
 }
 
-/* ================= API ================= */
+/* API */
 
 async function buscarProduto(cod){
 if(!cod||cod.length<8) return
+
 try{
+
+produtoInput.value="Buscando..."
+marcaInput.value="..."
+
 const resp=await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${cod}`,{
 headers:{"X-Cosmos-Token":TOKEN}
 })
-if(!resp.ok) return
-const data=await resp.json()
-produtoInput.value=data.description||""
-marcaInput.value=data.brand?data.brand.name:""
-}catch(e){}
+
+if(!resp.ok){
+produtoInput.value=""
+marcaInput.value=""
+return
 }
 
-/* ================= BARCODE ================= */
+const data=await resp.json()
+
+produtoInput.value=data.description||""
+marcaInput.value=data.brand?data.brand.name:""
+
+}catch(e){
+produtoInput.value=""
+marcaInput.value=""
+}
+}
+
+/* BARCODE */
 
 function gerarBarcode(cod){
 modalBarcode.style.display="flex"
