@@ -1,41 +1,65 @@
-<!DOCTYPE html>  <html lang="pt-br">    <head>    
-<meta charset="UTF-8">    
-<meta name="viewport" content="width=device-width, initial-scale=1.0">    
-<title>PDV Futurista Scroll</title>  <!-- Bootstrap 5 -->  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">    
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>  <!-- DataTables -->  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">    
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>    
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>    
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>  <!-- Html5 QR e JsBarcode -->  <script src="https://unpkg.com/html5-qrcode"></script>  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>  <style>    
-body {    
-    background: linear-gradient(120deg, #0f172a, #1e293b);    
-    color: white;    
-    min-height: 100vh;    
-    padding: 30px 0;    
-    font-family: 'Segoe UI', sans-serif;    
-}    .card {
-border-radius: 20px;
-background: rgba(30,41,59,0.95);
-padding: 30px;
-box-shadow: 0 0 40px rgba(0,255,200,0.3);
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de produtos</title>
+
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Scanner e Barcode -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+body{
+background: linear-gradient(120deg,#0f172a,#1e293b);
+color:white;
+padding:30px 0;
+font-family:'Segoe UI',sans-serif;
+}
+.card-custom{
+background:#1e293b;
+border-radius:20px;
+padding:30px;
+box-shadow:0 0 40px rgba(0,255,200,0.25);
+}
+h2{ color:#00ffc3; }
+
+.categoria-box{
+margin-top:40px;
+background:#0f172a;
+padding:20px;
+border-radius:15px;
 }
 
-h2 { color: #00ffc3; }
-
-.btn-edit { background: #facc15; color: black; }
-.btn-delete { background: #ef4444; color: white; }
-
-.codigo-click {
-color: #00ffc3;
-font-weight: bold;
-cursor: pointer;
+.categoria-title{
+display:flex;
+justify-content:space-between;
+align-items:center;
+color:#00ffc3;
 }
 
-.table-scroll {
-max-height: 300px;
-overflow-y: auto;
+.edit-cat{
+cursor:pointer;
+font-size:18px;
 }
 
-.modal-bg {
+.codigo-click{
+color:#00ffc3;
+font-weight:bold;
+cursor:pointer;
+}
+
+.modal-bg{
 position: fixed;
 top:0;
 left:0;
@@ -45,150 +69,164 @@ background:black;
 display:none;
 justify-content:center;
 align-items:center;
-z-index: 9999;
+z-index:9999;
 }
+</style>
+</head>
+<body>
 
-#reader { width:100%; }
-</style>  </head>
+<div class="container">
+<div class="card-custom">
 
-<body>  <div class="container">    
-    <div class="card">    
-        <h2 class="text-center mb-4">Cadastro de Produtos</h2>  <div class="mb-3">    
-        <input type="text" id="marca" class="form-control" placeholder="Marca">    
-    </div>    
-    <div class="mb-3">    
-        <input type="text" id="produto" class="form-control" placeholder="Produto">    
-    </div>    
-    <div class="mb-3">    
-        <input type="text" id="codigo" class="form-control" placeholder="Código do Produto">    
-    </div>    <div class="d-flex gap-2 flex-wrap mb-4">    
-    <button class="btn btn-success flex-fill" onclick="abrirCamera()">📷 Ler Código</button>    
-    <button class="btn btn-primary flex-fill" id="btnCadastrar" onclick="acaoPrincipal()">Cadastrar</button>    
-    <button class="btn btn-danger flex-fill" id="btnLimpar" onclick="limparCampos()" style="display:none">Limpar</button>    
-</div>    
+<h2 class="text-center mb-4">Cadastro de Produtos</h2>
 
-<h4 class="text-center" style="color:white">Produtos Cadastrados</h4><br>    
-
-<!-- Busca externa -->    
-<div class="mb-3 text-end">    
-    <input type="text" id="buscaExterna" class="form-control"    
-           placeholder="🔍 Buscar produto..."    
-           style="max-width:300px; margin-left:auto;">    
-</div>    
-
-<div class="table-scroll">    
-    <table id="produtosTable" class="table table-dark table-striped table-hover table-bordered" style="width:100%">    
-        <thead>    
-            <tr>    
-                <th>Marca</th>    
-                <th>Produto</th>    
-                <th>Código</th>    
-                <th>Ações</th>    
-            </tr>    
-        </thead>    
-        <tbody></tbody>    
-    </table>    
+<div class="row g-3">
+<div class="col-md-3">
+<input type="text" id="categoriaInput" class="form-control" placeholder="Categoria (opcional)">
+</div>
+<div class="col-md-3">
+<input type="text" id="marcaInput" class="form-control" placeholder="Marca">
+</div>
+<div class="col-md-3">
+<input type="text" id="produtoInput" class="form-control" placeholder="Produto">
+</div>
+<div class="col-md-3">
+<input type="text" id="codigoInput" class="form-control" placeholder="Código">
 </div>
 
-</div>  </div>  <!-- Modal Camera -->  <div class="modal-bg" id="modalCamera">    
-    <div class="card p-3" style="width:350px;text-align:center;">    
-        <h5>Ler Código de Barras</h5>    
-        <div id="reader"></div>    
-        <button class="btn btn-secondary mt-3" onclick="fecharCamera()">Cancelar</button>    
-    </div>    
-</div>  <!-- Modal Barcode Tela Cheia -->  <div class="modal-bg" id="modalBarcode">    
-    <div style="position:absolute; top:20px; right:20px;">    
-        <button class="btn btn-light" onclick="fecharBarcode()">Fechar ✖</button>    
-    </div>  <div style="display:flex; flex-direction:column;    
-            justify-content:center;    
-            align-items:center;    
-            height:100%; width:100%;">    <svg id="barcode" style="width:90%; height:200px;"></svg>    
-<h3 id="codigoTexto" style="color:white; margin-top:20px;"></h3>
+<div class="col-12 d-flex gap-2">
+<button class="btn btn-success flex-fill" onclick="abrirCamera()">📷 Ler Código</button>
+<button class="btn btn-primary flex-fill" onclick="cadastrar()">Cadastrar</button>
+</div>
+</div>
 
-</div>  </div>  <script>    
-const TOKEN = "AVqJ1IQT43zeLcJq3kMwYg"    
-var produtos = JSON.parse(localStorage.getItem("produtos")) || []    
-var html5QrCode = null    
-var editandoIndex = null    
-var table = null    function beep(){
-var ctx = new (window.AudioContext || window.webkitAudioContext)()
-var osc = ctx.createOscillator()
-osc.frequency.setValueAtTime(900, ctx.currentTime)
+<hr class="my-4">
+<div id="areaCategorias"></div>
+
+</div>
+</div>
+
+<!-- MODAL EDITAR PRODUTO -->
+<div class="modal fade" id="modalEditarProduto">
+<div class="modal-dialog">
+<div class="modal-content bg-dark text-white">
+<div class="modal-header">
+<h5 class="modal-title">Editar Produto</h5>
+<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input type="text" id="editCategoria" class="form-control mb-2" placeholder="Categoria">
+<input type="text" id="editMarca" class="form-control mb-2" placeholder="Marca">
+<input type="text" id="editProduto" class="form-control mb-2" placeholder="Produto">
+<input type="text" id="editCodigo" class="form-control" placeholder="Código">
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-success" onclick="salvarEdicao()">Salvar</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- MODAL CÂMERA -->
+<div class="modal-bg" id="modalCamera">
+<div class="card p-3" style="width:350px;text-align:center;">
+<h5>Ler Código</h5>
+<div id="reader"></div>
+<button class="btn btn-secondary mt-3" onclick="fecharCamera()">Cancelar</button>
+</div>
+</div>
+
+<!-- MODAL BARCODE -->
+<div class="modal-bg" id="modalBarcode">
+<div style="position:absolute; top:20px; right:20px;">
+<button class="btn btn-light" onclick="fecharBarcode()">Fechar ✖</button>
+</div>
+<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%;">
+<svg id="barcode"></svg>
+<h3 id="codigoTexto" style="margin-top:20px;"></h3>
+</div>
+</div>
+
+<script>
+const TOKEN="SEU_TOKEN_AQUI"
+
+let produtos=JSON.parse(localStorage.getItem("produtos"))||[]
+let editandoIndex=null
+let html5QrCode=null
+let tabelas=[]
+let modalEditarProduto
+
+document.addEventListener("DOMContentLoaded",()=>{
+modalEditarProduto=new bootstrap.Modal(document.getElementById("modalEditarProduto"))
+listar()
+})
+
+function beep(){
+var ctx=new(window.AudioContext||window.webkitAudioContext)()
+var osc=ctx.createOscillator()
+osc.frequency.setValueAtTime(900,ctx.currentTime)
 osc.connect(ctx.destination)
 osc.start()
 setTimeout(()=>osc.stop(),120)
 }
 
 function salvarLocal(){
-localStorage.setItem("produtos", JSON.stringify(produtos))
+localStorage.setItem("produtos",JSON.stringify(produtos))
 }
 
-function atualizarBotaoLimpar(){
-btnLimpar.style.display =
-(marca.value || produto.value || codigo.value) ? 'block':'none'
-}
+function cadastrar(){
+let categoria=categoriaInput.value.trim()||"Sem Categoria"
 
-function limparCampos(){
-marca.value=''
-produto.value=''
-codigo.value=''
-editandoIndex=null
-btnCadastrar.innerText="Cadastrar"
-atualizarBotaoLimpar()
-}
-
-async function buscarProduto(cod){
-if(!cod || cod.length<8) return
-try{
-const resp=await fetch(https://api.cosmos.bluesoft.com.br/gtins/${cod},{
-headers:{ "X-Cosmos-Token": TOKEN }
-})
-if(!resp.ok) return
-const data=await resp.json()
-produto.value=data.description||''
-marca.value=data.brand ? data.brand.name : ''
-atualizarBotaoLimpar()
-}catch(e){}
-}
-
-function acaoPrincipal(){
-if(editandoIndex!==null) salvarEdicao()
-else cadastrarManual()
-}
-
-function cadastrarManual(){
-if(!marca.value||!produto.value||!codigo.value){
-alert("Preencha todos os campos!")
+if(!produtoInput.value||!codigoInput.value){
+alert("Preencha Produto e Código!")
 return
 }
-produtos.push({marca:marca.value,produto:produto.value,codigo:codigo.value})
+
+produtos.push({
+categoria,
+marca:marcaInput.value,
+produto:produtoInput.value,
+codigo:codigoInput.value
+})
+
 salvarLocal()
-limparCampos()
+categoriaInput.value=""
+marcaInput.value=""
+produtoInput.value=""
+codigoInput.value=""
 listar()
 }
 
-function editar(index){
+function abrirEditar(index){
 editandoIndex=index
-marca.value=produtos[index].marca
-produto.value=produtos[index].produto
-codigo.value=produtos[index].codigo
-btnCadastrar.innerText="Salvar"
-atualizarBotaoLimpar()
+let p=produtos[index]
+
+editCategoria.value=p.categoria==="Sem Categoria"?"":p.categoria
+editMarca.value=p.marca
+editProduto.value=p.produto
+editCodigo.value=p.codigo
+
+modalEditarProduto.show()
 }
 
 function salvarEdicao(){
+let categoria=editCategoria.value.trim()||"Sem Categoria"
+
 produtos[editandoIndex]={
-marca:marca.value,
-produto:produto.value,
-codigo:codigo.value
+categoria,
+marca:editMarca.value,
+produto:editProduto.value,
+codigo:editCodigo.value
 }
+
 salvarLocal()
-limparCampos()
+modalEditarProduto.hide()
 listar()
 }
 
 function excluir(index){
-if(confirm("Deseja excluir este produto?")){
+if(confirm("Excluir produto?")){
 produtos.splice(index,1)
 salvarLocal()
 listar()
@@ -196,95 +234,133 @@ listar()
 }
 
 function listar(){
-if(table) table.destroy()
-var tbody=$("#produtosTable tbody")
-tbody.empty()
+tabelas.forEach(t=>t.destroy())
+tabelas=[]
+areaCategorias.innerHTML=""
 
-produtos.forEach((p,i)=>{    
-    tbody.append(`<tr>    
-        <td>${p.marca}</td>    
-        <td>${p.produto}</td>    
-        <td><span class="codigo-click" onclick="gerarBarcode('${p.codigo}')">${p.codigo}</span></td>    
-        <td>    
-            <button class="btn btn-sm btn-edit me-1" onclick="editar(${i})">Editar</button>    
-            <button class="btn btn-sm btn-delete" onclick="excluir(${i})">Excluir</button>    
-        </td>    
-    </tr>`)    
-})    
-
-table=$('#produtosTable').DataTable({    
-    language:{ url:'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },    
-    paging:false,    
-    info:false,    
-    searching:true,    
-    dom:'t'    
+let categorias={}
+produtos.forEach((p,i)=>{
+if(!categorias[p.categoria]) categorias[p.categoria]=[]
+categorias[p.categoria].push({...p,index:i})
 })
 
-}
+Object.keys(categorias).sort().forEach(cat=>{
 
-document.getElementById("buscaExterna")
-.addEventListener("keyup", function(){
-table.search(this.value).draw()
+let id="tab_"+Math.random().toString(36).substring(2,9)
+
+let div=document.createElement("div")
+div.className="categoria-box"
+
+div.innerHTML=`
+<div class="categoria-title">
+<span>${cat}</span>
+</div>
+
+<div class="table-responsive">
+<table id="${id}" class="table table-dark table-striped table-bordered w-100">
+<thead>
+<tr>
+<th>Marca</th>
+<th>Produto</th>
+<th>Código</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody>
+${categorias[cat].map(p=>`
+<tr>
+<td>${p.marca||""}</td>
+<td>${p.produto}</td>
+<td><span class="codigo-click" onclick="gerarBarcode('${p.codigo}')">${p.codigo}</span></td>
+<td>
+<button class="btn btn-sm btn-warning me-1" onclick="abrirEditar(${p.index})">Editar</button>
+<button class="btn btn-sm btn-danger" onclick="excluir(${p.index})">Excluir</button>
+</td>
+</tr>
+`).join("")}
+</tbody>
+</table>
+</div>
+`
+
+areaCategorias.appendChild(div)
+
+let tabela=$('#'+id).DataTable({
+language:{url:'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'},
+paging:false,
+info:false,
+searching:true,
+dom:'t'
 })
 
-function gerarBarcode(cod){
-modalBarcode.style.display='flex'
-codigoTexto.innerText = cod
-
-let formato="CODE128"    
-if(cod.length===13 && /^\d+$/.test(cod)){    
-    formato="EAN13"    
-}    
-
-JsBarcode("#barcode", cod, {    
-    format:formato,    
-    width:3,    
-    height:180,    
-    displayValue:false,    
-    margin:20    
+tabelas.push(tabela)
 })
-
 }
 
-function fecharBarcode(){
-modalBarcode.style.display='none'
-}
+/* ================= CAMERA ================= */
 
 function abrirCamera(){
-modalCamera.style.display='flex'
-html5QrCode = new Html5Qrcode("reader")
+modalCamera.style.display="flex"
+html5QrCode=new Html5Qrcode("reader")
 
-html5QrCode.start(    
-    {facingMode:"environment"},    
-    {fps:20, qrbox:{width:280,height:150}},    
-    function(decodedText){    
-        codigo.value=decodedText    
-        beep()    
-        buscarProduto(decodedText)    
-        atualizarBotaoLimpar()    
-        fecharCamera()    
-    }    
+html5QrCode.start(
+{facingMode:"environment"},
+{fps:20,qrbox:{width:280,height:150}},
+function(decodedText){
+codigoInput.value=decodedText
+beep()
+buscarProduto(decodedText)
+fecharCamera()
+}
 )
-
 }
 
 function fecharCamera(){
 if(html5QrCode){
 html5QrCode.stop().then(()=>{
-modalCamera.style.display='none'
+modalCamera.style.display="none"
 })
 }
 }
 
-codigo.addEventListener("input", function(){
-atualizarBotaoLimpar()
-buscarProduto(codigo.value)
+/* ================= API ================= */
+
+async function buscarProduto(cod){
+if(!cod||cod.length<8) return
+try{
+const resp=await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${cod}`,{
+headers:{"X-Cosmos-Token":TOKEN}
 })
+if(!resp.ok) return
+const data=await resp.json()
+produtoInput.value=data.description||""
+marcaInput.value=data.brand?data.brand.name:""
+}catch(e){}
+}
 
-marca.addEventListener("input", atualizarBotaoLimpar)
-produto.addEventListener("input", atualizarBotaoLimpar)
+/* ================= BARCODE ================= */
 
-listar()
-</script>  </body>
+function gerarBarcode(cod){
+modalBarcode.style.display="flex"
+codigoTexto.innerText=cod
 
+let formato="CODE128"
+if(cod.length===13 && /^\d+$/.test(cod)){
+formato="EAN13"
+}
+
+JsBarcode("#barcode",cod,{
+format:formato,
+width:3,
+height:180,
+displayValue:false
+})
+}
+
+function fecharBarcode(){
+modalBarcode.style.display="none"
+}
+</script>
+
+</body>
 </html>
