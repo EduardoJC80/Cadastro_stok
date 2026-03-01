@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDV Futurista Completo</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+body{
+background: linear-gradient(120deg,#0f172a,#1e293b);
+color:white;
+padding:30px 0;
+font-family:'Segoe UI',sans-serif;
+}
+.card-custom{
+background:#1e293b;
+border-radius:20px;
+padding:30px;
+box-shadow:0 0 40px rgba(0,255,200,0.25);
+}
+h2{ color:#00ffc3; }
+.categoria-box{
+margin-top:40px;
+background:#0f172a;
+padding:20px;
+border-radius:15px;
+}
+.categoria-title{
+display:flex;
+justify-content:space-between;
+align-items:center;
+color:#00ffc3;
+}
+.codigo-click{
+color:#00ffc3;
+font-weight:bold;
+cursor:pointer;
+}
+.modal-bg{
+position: fixed;
+top:0; left:0;
+width:100%; height:100%;
+background:black;
+display:none;
+justify-content:center;
+align-items:center;
+z-index:9999;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<div class="card-custom">
+
+<h2 class="text-center mb-4">Cadastro de Produtos</h2>
+
+<div class="row g-3">
+<div class="col-md-3">
+<input type="text" id="categoriaInput" class="form-control" placeholder="Categoria (opcional)">
+</div>
+<div class="col-md-3">
+<input type="text" id="marcaInput" class="form-control" placeholder="Marca">
+</div>
+<div class="col-md-3">
+<input type="text" id="produtoInput" class="form-control" placeholder="Produto">
+</div>
+<div class="col-md-3">
+<input type="text" id="codigoInput" class="form-control" placeholder="Código">
+</div>
+
+<div class="col-12 d-flex gap-2">
+<button class="btn btn-success flex-fill" onclick="abrirCamera()">📷 Ler Código</button>
+<button class="btn btn-primary flex-fill" onclick="cadastrar()">Cadastrar</button>
+</div>
+</div>
+
+<hr class="my-4">
+
+<h4 class="text-center mb-3" style="color:#00ffc3;">
+📦 Produtos Cadastrados
+</h4>
+
+<div class="mb-3">
+<input type="text" id="buscaGlobal" class="form-control" placeholder="🔎 Buscar em tudo...">
+</div>
+
+<div id="areaCategorias"></div>
+
+</div>
+</div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditarProduto">
+<div class="modal-dialog">
+<div class="modal-content bg-dark text-white">
+<div class="modal-header">
+<h5 class="modal-title">Editar Produto</h5>
+<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input type="text" id="editCategoria" class="form-control mb-2">
+<input type="text" id="editMarca" class="form-control mb-2">
+<input type="text" id="editProduto" class="form-control mb-2">
+<input type="text" id="editCodigo" class="form-control">
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-success" onclick="salvarEdicao()">Salvar</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal Camera -->
+<div class="modal-bg" id="modalCamera">
+<div class="card p-3" style="width:350px;text-align:center;">
+<h5>Ler Código</h5>
+<div id="reader"></div>
+<button class="btn btn-secondary mt-3" onclick="fecharCamera()">Cancelar</button>
+</div>
+</div>
+
+<script>
+
+const API_URL="https://script.google.com/macros/s/AKfycbzYBfv_e6rxfWoNsUePTZuu_jErXwPhwwzjhPpS18Cknqe9XsDSWsraoVxZ6eRklUrt/exec"
+const TOKEN="AVqJ1IQT43zeLcJq3kMwYg"
+
+let produtos=[]
+let editandoIndex=null
+let tabelas=[]
+let modalEditarProduto
+let html5QrCode=null
+
+document.addEventListener("DOMContentLoaded",()=>{
+
+modalEditarProduto=new bootstrap.Modal(document.getElementById("modalEditarProduto"))
+
+buscaGlobal.addEventListener("input",()=>{
+filtrarGlobal(buscaGlobal.value.toLowerCase())
+})
+
+codigoInput.addEventListener("blur",()=>{
+buscarProduto(codigoInput.value.trim())
+})
+
+codigoInput.addEventListener("keydown",(e)=>{
+if(e.key==="Enter"){
+e.preventDefault()
+buscarProduto(codigoInput.value.trim())
+}
+})
+
+carregarProdutos()
+})
+
+async function carregarProdutos(){
+const resp = await fetch(API_URL)
+produtos = await resp.json()
+listar()
+}
+
+async function cadastrar(){
+
+let categoria=categoriaInput.value.trim()||"Sem Categoria"
+let codigo=codigoInput.value.trim()
+
+if(!produtoInput.value || !codigo){
+alert("Preencha Produto e Código!")
+return
+}
+
+let existe = produtos.some(p => p.codigo === codigo)
+
+if(existe){
+alert("⚠️ Este código já está cadastrado!")
+return
+}
+
+await fetch(API_URL,{
+method:"POST",
+body:JSON.stringify({
+acao:"criar",
+categoria,
+marca:marcaInput.value,
+produto:produtoInput.value,
+codigo:codigo
+})
+})
+
+categoriaInput.value=""
+marcaInput.value=""
+produtoInput.value=""
+codigoInput.value=""
+
+carregarProdutos()
+}
+
+function abrirEditar(index){
+editandoIndex=index
+let p=produtos[index]
+
+editCategoria.value=p.categoria==="Sem Categoria"?"":p.categoria
+editMarca.value=p.marca
+editProduto.value=p.produto
+editCodigo.value=p.codigo
+
+modalEditarProduto.show()
+}
+
+async function salvarEdicao(){
+
+let categoria=editCategoria.value.trim()||"Sem Categoria"
+let produto=produtos[editandoIndex]
+
+await fetch(API_URL,{
+method:"POST",
+body:JSON.stringify({
+acao:"editar",
+linha:produto.linha,
+categoria,
+marca:editMarca.value,
+produto:editProduto.value,
+codigo:editCodigo.value
+})
+})
+
+modalEditarProduto.hide()
+carregarProdutos()
+}
+
+async function excluir(index){
+
+if(!confirm("Excluir produto?")) return
+
+let produto=produtos[index]
+
+await fetch(API_URL,{
+method:"POST",
+body:JSON.stringify({
+acao:"excluir",
+linha:produto.linha
+})
+})
+
+carregarProdutos()
+}
+
+async function buscarProduto(cod){
+
+if(!cod || cod.length < 8) return
+
+try{
+
+produtoInput.value="Buscando..."
+marcaInput.value="..."
+
+const resp=await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${cod}`,{
+headers:{"X-Cosmos-Token":TOKEN}
+})
+
+if(!resp.ok){
+produtoInput.value=""
+marcaInput.value=""
+return
+}
+
+const data=await resp.json()
+
+produtoInput.value=data.description || ""
+marcaInput.value=data.brand ? data.brand.name : ""
+
+}catch(e){
+produtoInput.value=""
+marcaInput.value=""
+}
+}
+
+function abrirCamera(){
+modalCamera.style.display="flex"
+html5QrCode=new Html5Qrcode("reader")
+
+html5QrCode.start(
+{facingMode:"environment"},
+{fps:20,qrbox:{width:280,height:150}},
+function(decodedText){
+codigoInput.value=decodedText
+beep()
+buscarProduto(decodedText)
+fecharCamera()
+}
+)
+}
+
+function fecharCamera(){
+if(html5QrCode){
+html5QrCode.stop().then(()=>{
+modalCamera.style.display="none"
+})
+}
+}
+
+function beep(){
+var ctx=new(window.AudioContext||window.webkitAudioContext)()
+var osc=ctx.createOscillator()
+osc.frequency.setValueAtTime(900,ctx.currentTime)
+osc.connect(ctx.destination)
+osc.start()
+setTimeout(()=>osc.stop(),120)
+}
+
+function listar(){
+tabelas.forEach(t=>t.destroy())
+tabelas=[]
+areaCategorias.innerHTML=""
+
+let categorias={}
+produtos.forEach((p,i)=>{
+if(!categorias[p.categoria]) categorias[p.categoria]=[]
+categorias[p.categoria].push({...p,index:i})
+})
+
+Object.keys(categorias).sort().forEach(cat=>{
+
+let id="tab_"+Math.random().toString(36).substring(2,9)
+
+let div=document.createElement("div")
+div.className="categoria-box"
+
+div.innerHTML=`
+<div class="categoria-title">
+<span>${cat}</span>
+</div>
+<div class="table-responsive">
+<table id="${id}" class="table table-dark table-striped table-bordered w-100">
+<thead>
+<tr>
+<th>Marca</th>
+<th>Produto</th>
+<th>Código</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody>
+${categorias[cat].map(p=>`
+<tr>
+<td>${p.marca||""}</td>
+<td>${p.produto}</td>
+<td>${p.codigo}</td>
+<td>
+<button class="btn btn-sm btn-warning me-1" onclick="abrirEditar(${p.index})">Editar</button>
+<button class="btn btn-sm btn-danger" onclick="excluir(${p.index})">Excluir</button>
+</td>
+</tr>
+`).join("")}
+</tbody>
+</table>
+</div>
+`
+
+areaCategorias.appendChild(div)
+
+let tabela=$('#'+id).DataTable({
+language:{url:'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'},
+paging:false,
+info:false,
+searching:true,
+dom:'t'
+})
+
+tabelas.push(tabela)
+})
+}
+
+function filtrarGlobal(texto){
+if(!texto){
+carregarProdutos()
+return
+}
+
+let filtrados = produtos.filter(p => 
+(p.categoria && p.categoria.toLowerCase().includes(texto)) ||
+(p.marca && p.marca.toLowerCase().includes(texto)) ||
+(p.produto && p.produto.toLowerCase().includes(texto)) ||
+(p.codigo && p.codigo.toLowerCase().includes(texto))
+)
+
+produtos = filtrados
+listar()
+}
+
+</script>
+</body>
+</html>
