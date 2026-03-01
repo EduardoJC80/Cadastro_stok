@@ -56,10 +56,8 @@ cursor:pointer;
 
 .modal-bg{
 position: fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
+top:0; left:0;
+width:100%; height:100%;
 background:black;
 display:none;
 justify-content:center;
@@ -96,6 +94,15 @@ z-index:9999;
 </div>
 
 <hr class="my-4">
+
+<h4 class="text-center mb-3" style="color:#00ffc3;">
+📦 Produtos Cadastrados
+</h4>
+
+<div class="mb-3">
+<input type="text" id="buscaGlobal" class="form-control" placeholder="🔎 Buscar em tudo...">
+</div>
+
 <div id="areaCategorias"></div>
 
 </div>
@@ -165,6 +172,10 @@ if(e.key==="Enter"){
 e.preventDefault()
 buscarProduto(codigoInput.value.trim())
 }
+})
+
+buscaGlobal.addEventListener("input",()=>{
+filtrarGlobal(buscaGlobal.value.toLowerCase())
 })
 
 listar()
@@ -243,6 +254,74 @@ listar()
 }
 }
 
+/* FILTRO GLOBAL */
+function filtrarGlobal(texto){
+
+if(!texto){
+listar()
+return
+}
+
+tabelas.forEach(t=>t.destroy())
+tabelas=[]
+areaCategorias.innerHTML=""
+
+let filtrados = produtos.filter(p => 
+(p.categoria && p.categoria.toLowerCase().includes(texto)) ||
+(p.marca && p.marca.toLowerCase().includes(texto)) ||
+(p.produto && p.produto.toLowerCase().includes(texto)) ||
+(p.codigo && p.codigo.toLowerCase().includes(texto))
+)
+
+let categorias={}
+filtrados.forEach((p,i)=>{
+if(!categorias[p.categoria]) categorias[p.categoria]=[]
+categorias[p.categoria].push({...p,index:produtos.indexOf(p)})
+})
+
+Object.keys(categorias).sort().forEach(cat=>{
+
+let id="tab_"+Math.random().toString(36).substring(2,9)
+
+let div=document.createElement("div")
+div.className="categoria-box"
+
+div.innerHTML=`
+<div class="categoria-title">
+<span>${cat}</span>
+</div>
+<div class="table-responsive">
+<table id="${id}" class="table table-dark table-striped table-bordered w-100">
+<thead>
+<tr>
+<th>Marca</th>
+<th>Produto</th>
+<th>Código</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody>
+${categorias[cat].map(p=>`
+<tr>
+<td>${p.marca||""}</td>
+<td>${p.produto}</td>
+<td><span class="codigo-click" onclick="gerarBarcode('${p.codigo}')">${p.codigo}</span></td>
+<td>
+<button class="btn btn-sm btn-warning me-1" onclick="abrirEditar(${p.index})">Editar</button>
+<button class="btn btn-sm btn-danger" onclick="excluir(${p.index})">Excluir</button>
+</td>
+</tr>
+`).join("")}
+</tbody>
+</table>
+</div>
+`
+
+areaCategorias.appendChild(div)
+})
+}
+
+/* LISTAR NORMAL */
 function listar(){
 tabelas.forEach(t=>t.destroy())
 tabelas=[]
@@ -307,7 +386,6 @@ tabelas.push(tabela)
 }
 
 /* CAMERA */
-
 function abrirCamera(){
 modalCamera.style.display="flex"
 html5QrCode=new Html5Qrcode("reader")
@@ -333,12 +411,10 @@ modalCamera.style.display="none"
 }
 
 /* API */
-
 async function buscarProduto(cod){
 if(!cod||cod.length<8) return
 
 try{
-
 produtoInput.value="Buscando..."
 marcaInput.value="..."
 
@@ -353,7 +429,6 @@ return
 }
 
 const data=await resp.json()
-
 produtoInput.value=data.description||""
 marcaInput.value=data.brand?data.brand.name:""
 
@@ -364,7 +439,6 @@ marcaInput.value=""
 }
 
 /* BARCODE */
-
 function gerarBarcode(cod){
 modalBarcode.style.display="flex"
 codigoTexto.innerText=cod
