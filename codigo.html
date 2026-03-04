@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV Profissional - Full Premium</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@300;400;600;700&display=swap');
+
+:root { 
+    --primary: #ff0033;
+    --primary-soft: rgba(255, 0, 51, 0.35);
+    --secondary: #ffd400;
+    --dark-bg: #050507;
+    --glass: rgba(255,255,255,0.05);
+    --glass-strong: rgba(255,255,255,0.08);
+    --border-glass: rgba(255,255,255,0.08);
+    --text-soft: #b8b8c2;
+}
+
+body { 
+    background: radial-gradient(circle at 20% 20%, #111 0%, #0a0a0f 40%, #050507 100%);
+    color: #fff; 
+    padding: 30px 0; 
+    font-family: 'Inter', sans-serif;
+}
+
+/* ================= CARD PRINCIPAL ================= */
+
+.card-custom { 
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: 22px; 
+    padding: 35px; 
+    width: 95%; 
+    max-width: 1500px; 
+    margin: 0 auto; 
+    box-shadow: 
+        0 0 50px var(--primary-soft),
+        inset 0 0 25px rgba(255,255,255,0.03);
+    transition: 0.3s;
+}
+
+/* ================= TITULOS ================= */
+
+h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, #ffd400, #ff0033);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ================= LOADER ================= */
+
+#loader-global {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(0,0,0,0.95); 
+    z-index: 30000;
+    display: none; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+}
+
+.spinner-soft { 
+    width: 70px; 
+    height: 70px; 
+    border: 6px solid rgba(255,255,255,0.1); 
+    border-top: 6px solid var(--secondary); 
+    border-radius: 50%; 
+    animation: spin 0.7s linear infinite; 
+}
+
+@keyframes spin { 
+    to { transform: rotate(360deg); } 
+}
+
+/* ================= CADASTRO ================= */
+
+.cadastro-moderno {
+    display: none;
+    position: relative;
+    padding: 35px;
+    border-radius: 20px;
+    background: var(--glass-strong);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-glass);
+    margin-bottom: 35px;
+    box-shadow: inset 0 0 30px rgba(255,255,255,0.03);
+}
+
+.btn-close-cadastro { 
+    position: absolute; 
+    top: 15px; 
+    right: 15px; 
+    background: transparent; 
+    border: 2px solid var(--primary); 
+    color: var(--primary); 
+    border-radius: 50%; 
+    width: 35px; 
+    height: 35px; 
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.btn-close-cadastro:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ================= LABELS ================= */
+
+.label-moderno {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--secondary);
+    margin-bottom: 6px;
+    display: block;
+}
+
+/* ================= INPUTS ================= */
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-moderno {
+    background: rgba(0,0,0,0.7) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+    height: 48px;
+    transition: 0.2s;
+    padding-right: 40px !important;
+}
+
+.input-moderno:focus {
+    border-color: var(--secondary) !important;
+    box-shadow: 0 0 15px rgba(255,212,0,0.4) !important;
+}
+
+.clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #aaa;
+    cursor: pointer;
+    display: none;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.clear-btn:hover {
+    color: var(--primary);
+    transform: translateY(-50%) scale(1.2);
+}
+
+/* ================= BOTÕES ================= */
+
+.btn {
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: 0.25s ease;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    border: none;
+    color: #000;
+}
+
+.btn-success:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,255,136,0.4);
+}
+
+.btn-camera {
+    background: transparent;
+    border: 2px solid var(--secondary);
+    color: var(--secondary);
+}
+
+.btn-camera:hover {
+    background: var(--secondary);
+    color: #000;
+    box-shadow: 0 0 20px rgba(255,212,0,0.5);
+}
+
+.btn-cadastrar {
+    background: linear-gradient(135deg, #ff0033, #b80026);
+    border: none;
+}
+
+.btn-cadastrar:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(255,0,51,0.5);
+}
+
+/* ================= BUSCA ================= */
+
+#buscaGlobal {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    border-radius: 14px;
+    height: 55px;
+    font-size: 18px;
+    transition: 0.2s;
+}    
+
+#buscaGlobal::placeholder {
+    color: #fff !important;
+    opacity: 1;
+}
+
+#buscaGlobal:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 20px var(--primary-soft);
+}
+
+/* ================= CATEGORIAS ================= */
+
+.categoria-box { 
+    margin: 35px 0; 
+    background: var(--glass-strong);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-glass);
+    border-radius: 18px; 
+    padding: 25px; 
+    box-shadow: inset 0 0 25px rgba(255,255,255,0.03);
+}
+
+.categoria-title { 
+    font-family: 'Orbitron', sans-serif;
+    color: var(--secondary); 
+    font-weight: 700; 
+    margin-bottom: 20px; 
+    font-size: 18px;
+    letter-spacing: 1px;
+}
+
+/* ================= TABELA ================= */
+
+.table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: rgba(255,255,255,0.03);
+    --bs-table-border-color: rgba(255,255,255,0.05);
+}
+
+.table tbody tr {
+    transition: 0.2s;
+}
+
+.table tbody tr:hover {
+    background: rgba(255,0,51,0.08);
+    transform: scale(1.01);
+}
+
+/* ================= EAN ================= */
+
+.ean-link { 
+    color: var(--secondary); 
+    font-family: monospace; 
+    font-weight: bold; 
+    transition: 0.2s;
+}
+
+.ean-link:hover {
+    color: #fff;
+    text-shadow: 0 0 10px var(--secondary);
+}
+
+/* ================= MODAIS ================= */
+
+.modal-content {
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-glass);
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+#modalBarcodeFull { 
+    position: fixed; 
+    inset: 0;
+    width: 100vw; 
+    height: 100vh; 
+    background: radial-gradient(circle, #ffffff 0%, #f2f2f2 100%);
+    display: none; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 99999;
+    overflow: hidden;
+}
+
+/* container interno */
+#modalBarcodeFull .barcode-container {
+    width: 100%;
+    max-width: 650px;
+    text-align: center;
+    padding: 40px;
+}
+
+/* ================= BOTÃO NOVO PRODUTO PROFISSIONAL CLEAN ================= */
+
+.btn-novo-produto {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 22px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    transition: all 0.25s ease;
+}
+
+.btn-novo-produto:hover {
+    background: linear-gradient(135deg, #ff0033, #b80026);
+    border-color: #ff0033;
+    box-shadow: 0 8px 25px rgba(255,0,51,0.35);
+    transform: translateY(-2px);
+}
+
+/* ícone minimalista */
+.btn-plus {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ff0033, #b80026);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    transition: 0.25s;
+}
+
+.btn-novo-produto:hover .btn-plus {
+    background: #fff;
+    color: #ff0033;
+}
+
+.hr-produto {
+    border: none;
+    height: 1px;
+    margin: 25px 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 212, 0, 0.6),
+        rgba(255, 0, 51, 0.8),
+        rgba(255, 212, 0, 0.6),
+        transparent
+    );
+    opacity: 0.6;
+}
+/* ================= BOTÕES AÇÕES PRODUTO ================= */
+
+.produto-acoes {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-acao {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+/* EDITAR */
+.btn-editar {
+    color: #ffd400;
+}
+
+.btn-editar:hover {
+    background: linear-gradient(135deg, #ffd400, #ffb800);
+    color: #000;
+    box-shadow: 0 0 18px rgba(255,212,0,0.6);
+    transform: translateY(-3px) scale(1.05);
+}
+
+/* EXCLUIR */
+.btn-excluir {
+    color: #ff0033;
+}
+
+.btn-excluir:hover {
+    background: linear-gradient(135deg, #ff0033, #b80026);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(255,0,51,0.6);
+    transform: translateY(-3px) scale(1.05);
+}
+
+</style>
+</head>
+<body>
+
+<div id="loader-global">
+    <div class="spinner-soft"></div>
+    <div style="color:white; margin-top:10px;">CARREGANDO DADOS...</div>
+</div>
+
+<div class="container-fluid">
+    <div class="card-custom">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="m-0 fw-bold">CÓDIGOS</h3>
+           <button class="btn-novo-produto" id="btnNovo" onclick="validarAcao('cadastro')">
+    <span class="btn-plus">+</span>
+    Novo Produto
+</button>
+        </div>
+
+        <div id="sessaoCadastro" class="cadastro-moderno">
+    <button class="btn-close-cadastro" onclick="fecharCadastro()">&times;</button>
+
+    <div class="cadastro-header">
+        <h4>📦 Cadastro de Produto</h4>
+        <span>Preencha as informações abaixo</span>
+    </div>
+
+    <div class="row g-4 mt-2">
+
+<div class="col-md-3">
+    <label class="label-moderno">Categoria</label>
+    <div class="input-wrapper">
+        <input type="text" id="categoriaInput" class="form-control input-moderno input-clear"
+            placeholder="Digite ou selecione uma categoria"
+            list="listaCategorias" autocomplete="off">
+        <span class="clear-btn">&times;</span>
+    </div>
+    <datalist id="listaCategorias"></datalist>
+</div>
+
+<div class="col-md-3">
+    <label class="label-moderno">Marca</label>
+    <div class="input-wrapper">
+        <input type="text" id="marcaInput" class="form-control input-moderno input-clear"
+            placeholder="Digite a marca">
+        <span class="clear-btn">&times;</span>
+    </div>
+</div>
+
+<div class="col-md-3">
+    <label class="label-moderno">Produto</label>
+    <div class="input-wrapper">
+        <input type="text" id="produtoInput" class="form-control input-moderno input-clear"
+            placeholder="Digite o produto">
+        <span class="clear-btn">&times;</span>
+    </div>
+</div>
+
+<div class="col-md-3">
+    <label class="label-moderno">Código de Barras</label>
+    <div class="input-wrapper">
+        <input type="text" id="codigoInput" class="form-control input-moderno input-clear"
+            placeholder="Digite o código">
+        <span class="clear-btn">&times;</span>
+    </div>
+</div>
+
+        <div class="col-12 d-flex gap-3 mt-2">
+            <button class="btn btn-camera flex-fill" onclick="abrirCamera()">
+                📷 Ler Código
+            </button>
+
+            <button class="btn btn-cadastrar flex-fill" onclick="salvarNovo()">
+                ✔ Cadastrar Produto
+            </button>
+        </div>
+
+    </div>
+</div>
+        <input type="text" id="buscaGlobal" class="form-control form-control-lg border-secondary mb-4" placeholder="Pesquisar...">
+        
+        <h3 class="text-center"> Códigos Cadastrados </h3>
+        
+        <div id="areaCategorias"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content bg-dark border-info">
+        <div class="modal-header"><h5 class="modal-title">Editar Item</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <input type="text" id="editCat" class="form-control mb-2" placeholder="Categoria" list="listaCategorias">
+            <input type="text" id="editMarca" class="form-control mb-2" placeholder="Marca">
+            <input type="text" id="editProd" class="form-control mb-2" placeholder="Produto">
+            <input type="text" id="editCod" class="form-control" placeholder="Código">
+        </div>
+        <div class="modal-footer"><button class="btn btn-success w-100" onclick="salvarEdicao()">SALVAR ALTERAÇÕES</button></div>
+    </div></div>
+</div>
+
+<div id="modalBarcodeFull">
+    <div class="barcode-container">
+        <h2 id="b-name"></h2>
+        <h4 id="b-brand" style="color:#666"></h4>
+        <canvas id="barcodeCanvas"></canvas>
+        <button class="btn btn-dark btn-lg mt-5 w-100"
+            onclick="fecharBarcodeModal()">
+            FECHAR
+        </button>
+    </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzYBfv_e6rxfWoNsUePTZuu_jErXwPhwwzjhPpS18Cknqe9XsDSWsraoVxZ6eRklUrt/exec";
+const COSMOS_TOKEN = "AVqJ1IQT43zeLcJq3kMwYg";
+let produtosOriginais = [], produtos = [], tabelas = [], indexEdit = null, modalEditObj;
+
+document.addEventListener("DOMContentLoaded", () => {
+    modalEditObj = new bootstrap.Modal(document.getElementById('modalEditar'));
+    document.getElementById("buscaGlobal").oninput = (e) => filtrar(e.target.value);
+    document.getElementById("codigoInput").oninput = function() {
+        if(this.value.length >= 8) { clearTimeout(this.t); this.t = setTimeout(() => buscarAPI(this.value), 700); }
+    };
+    carregar();
+});
+
+// FUNÇÃO PARA ATUALIZAR O DATALIST DE CATEGORIAS
+function atualizarListaCategorias() {
+    const datalist = document.getElementById('listaCategorias');
+    const categoriasUnicas = [...new Set(produtosOriginais.map(p => p.categoria))].filter(c => c);
+    datalist.innerHTML = categoriasUnicas.sort().map(cat => `<option value="${cat}">`).join('');
+}
+
+function togglePass(event) {
+    // Evita que o clique no ícone faça o input perder foco
+    event.preventDefault();
+
+    const input = document.getElementById('swal-pass'); // Input da senha
+    const eye = document.getElementById('eye-icon');     // Ícone do olho
+
+    // Verifica se é tipo password
+    const isPassword = input.type === 'password';
+
+    // Alterna entre password e text
+    input.type = isPassword ? 'text' : 'password';
+
+    // Alterna ícone do olho
+    eye.innerText = isPassword ? '🙈' : '👁️';
+
+    // Mantém foco no input
+    input.focus();
+
+    // Mantém o cursor no final do texto
+    const length = input.value.length;
+    input.setSelectionRange(length, length);
+}
+
+function toggleLoader(s) { document.getElementById('loader-global').style.display = s ? 'flex' : 'none'; }
+function fecharCadastro() { document.getElementById('sessaoCadastro').style.display = 'none'; document.getElementById('btnNovo').style.display = 'inline-block'; }
+
+async function buscarAPI(gtin) {
+    try {
+        const resp = await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${gtin}`, { headers: { "X-Cosmos-Token": COSMOS_TOKEN } });
+        if (resp.ok) {
+            const d = await resp.json();
+            document.getElementById("produtoInput").value = d.description || "";
+            document.getElementById("marcaInput").value = d.brand?.name || "";
+        }
+    } catch (e) {}
+}
+
+async function carregar() {
+    toggleLoader(true);
+    try {
+        const r = await fetch(API_URL);
+        produtosOriginais = await r.json();
+        produtos = [...produtosOriginais];
+        renderizar();
+        atualizarListaCategorias(); // <--- Alimentação da busca
+    } finally { toggleLoader(false); }
+}
+
+function renderizar() {
+
+    const area = document.getElementById("areaCategorias");
+    area.innerHTML = "";
+
+    let cats = {};
+
+    // Agrupar produtos por categoria
+    produtos.forEach((p, i) => {
+        if (!cats[p.categoria]) cats[p.categoria] = [];
+        cats[p.categoria].push({ ...p, idx: i });
+    });
+
+    // Ordenar categorias
+    Object.keys(cats).sort().forEach(c => {
+
+        let container = document.createElement("div");
+        container.className = "categoria-box";
+
+        container.innerHTML = `
+            <div class="categoria-title">
+                📂 ${c || 'GERAL'}
+            </div>
+
+            <div class="row g-4">
+
+                ${cats[c].map((p, index) => `
+                    
+                    <div class="col-12">
+                        
+                        <div class="produto-card">
+                            
+                            <div class="produto-top d-flex justify-content-between align-items-center">
+                                <div class="produto-marca">${p.marca || '-'}</div>
+<div class="produto-acoes">
+    <button class="btn-acao btn-editar"
+        onclick="validarAcao('editar', ${p.idx})"
+        title="Editar produto">
+        ✏️
+    </button>
+
+    <button class="btn-acao btn-excluir"
+        onclick="validarAcao('excluir', ${p.idx})"
+        title="Excluir produto">
+        🗑️
+    </button>
+</div>                                </div>
+                            </div>
+
+                            <div class="produto-nome mt-2">
+                                ${p.produto || '-'}
+                            </div>
+
+                            <div class="produto-codigo mt-2">
+                                <span class="ean-link"
+                                    onclick="mostrarBarcode('${p.codigo}','${p.produto}','${p.marca}')">
+                                    ${p.codigo}
+                                </span>
+                            </div>
+
+                        </div>
+
+                        ${index < cats[c].length - 1 ? '<hr class="hr-produto">' : ''}
+
+                    </div>
+
+                `).join('')}
+
+            </div>
+        `;
+
+        area.appendChild(container);
+    });
+}
+
+async function validarAcao(tipo, index = null) {
+
+    const senhas = { 
+        cadastro: 'cadastrar', 
+        editar: 'editaritem', 
+        excluir: 'excluiritem' 
+    };
+
+    const titulos = {
+        cadastro: 'VALIDAÇÃO - CADASTRO',
+        editar: 'VALIDAÇÃO - EDITAR',
+        excluir: 'VALIDAÇÃO - EXCLUIR'
+    };
+
+    let senhaDigitada = '';
+
+    async function autenticar(erro = false) {
+
+        const result = await Swal.fire({
+            background: '#1c1c1c',
+            color: '#fff',
+            width: 420,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showCancelButton: true,
+            confirmButtonText: 'ENTRAR',
+            cancelButtonText: 'CANCELAR',
+            confirmButtonColor: '#ffd400',
+            cancelButtonColor: '#e30613',
+
+            didOpen: () => {
+                const input = document.getElementById('swal-pass');
+                if (input) {
+                    input.focus();
+                    input.select();
+
+                    input.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            Swal.getConfirmButton().click();
+                        }
+                    });
+                }
+            },
+
+            title: `
+                <div style="font-weight:900; font-size:20px; color:#ffd400;">
+                    🔐 ${titulos[tipo]}
+                </div>
+                <div style="font-size:12px; color:#aaa; margin-top:5px;">
+                    Autenticação necessária
+                </div>
+            `,
+
+            html: `
+                <div style="margin-top:15px;">
+                    <input value="eduardo" disabled 
+                        style="background:#111;border:1px solid #333;color:#888;
+                        padding:12px;width:100%;border-radius:8px;margin-bottom:15px;">
+                    
+                    <div style="position:relative;">
+                        <input id="swal-pass" type="password" 
+                            placeholder="Digite sua senha"
+                            value="${senhaDigitada}"
+                            style="background:#111;border:2px solid ${erro ? '#e30613' : '#ffd400'};
+                            color:#fff;padding:12px 45px 12px 12px;
+                            width:100%;border-radius:8px;outline:none;">
+                        
+                        <span id="eye-icon" onmousedown="togglePass(event)"
+      style="position:absolute; right:15px; top:50%; transform:translateY(-50%);
+             cursor:pointer; font-size:18px; color:#ffd400;">
+      👁️
+</span>
+                    </div>
+
+                    ${erro ? '<div style="color:#e30613;font-size:13px;margin-top:8px;">Senha incorreta</div>' : ''}
+                </div>
+            `
+        });
+
+        if (result.isDismissed) return false;
+
+        const pass = document.getElementById('swal-pass').value;
+
+        if (pass === senhas[tipo]) {
+            return true;
+        } else {
+            senhaDigitada = pass;
+            return await autenticar(true);
+        }
+    }
+
+    const autorizado = await autenticar();
+    if (!autorizado) return;
+
+    // ================= CADASTRO =================
+    if (tipo === 'cadastro') {
+        document.getElementById('sessaoCadastro').style.display = 'block';
+        document.getElementById('btnNovo').style.display = 'none';
+    }
+
+    // ================= EDITAR =================
+    else if (tipo === 'editar') {
+
+        const p = produtos[index];
+
+        const { value: form } = await Swal.fire({
+            title: 'VALIDAÇÃO - EDITAR',
+            background: '#1c1c1c',
+            color: '#fff',
+            width: 600,
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ffd400',
+            cancelButtonColor: '#e30613',
+            html: `
+                <input id="swalCat" class="swal2-input" placeholder="Categoria" value="${p.categoria}">
+                <input id="swalMarca" class="swal2-input" placeholder="Marca" value="${p.marca}">
+                <input id="swalProd" class="swal2-input" placeholder="Produto" value="${p.produto}">
+                <input id="swalCod" class="swal2-input" placeholder="Código" value="${p.codigo}">
+            `,
+            preConfirm: () => {
+                return {
+                    categoria: document.getElementById('swalCat').value,
+                    marca: document.getElementById('swalMarca').value,
+                    produto: document.getElementById('swalProd').value,
+                    codigo: document.getElementById('swalCod').value
+                }
+            }
+        });
+
+        if (!form) return;
+
+        toggleLoader(true);
+
+        await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                acao: "editar",
+                linha: produtos[index].linha,
+                ...form
+            })
+        });
+
+        toggleLoader(false);
+        carregar();
+    }
+
+    // ================= EXCLUIR =================
+    else if (tipo === 'excluir') {
+
+        const confirmacao = await Swal.fire({
+            title: 'VALIDAÇÃO - EXCLUIR',
+            text: 'Deseja realmente excluir este produto?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#e30613',
+            cancelButtonColor: '#ffd400',
+            background: '#1c1c1c',
+            color: '#fff'
+        });
+
+        if (!confirmacao.isConfirmed) return;
+
+        toggleLoader(true);
+
+        await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                acao: "excluir",
+                linha: produtos[index].linha
+            })
+        });
+
+        toggleLoader(false);
+        carregar();
+    }
+}
+async function salvarNovo() {
+    toggleLoader(true);
+    const dados = { 
+        acao: "criar", 
+        categoria: document.getElementById("categoriaInput").value, 
+        marca: document.getElementById("marcaInput").value, 
+        produto: document.getElementById("produtoInput").value, 
+        codigo: document.getElementById("codigoInput").value 
+    };
+    await fetch(API_URL, { method: "POST", body: JSON.stringify(dados) });
+    
+    // Limpar campos
+    document.getElementById("categoriaInput").value = "";
+    document.getElementById("marcaInput").value = "";
+    document.getElementById("produtoInput").value = "";
+    document.getElementById("codigoInput").value = "";
+    
+    fecharCadastro(); carregar();
+}
+
+async function salvarEdicao() {
+    toggleLoader(true);
+    const dados = { acao: "editar", linha: produtos[indexEdit].linha, categoria: document.getElementById('editCat').value, marca: document.getElementById('editMarca').value, produto: document.getElementById('editProd').value, codigo: document.getElementById('editCod').value };
+    await fetch(API_URL, { method: "POST", body: JSON.stringify(dados) });
+    modalEditObj.hide(); carregar();
+}
+
+async function confirmarExclusao(i) {
+    if((await Swal.fire({ title: 'Excluir?', text: produtos[i].produto, showCancelButton: true })).isConfirmed) {
+        toggleLoader(true);
+        await fetch(API_URL, { method: "POST", body: JSON.stringify({ acao: "excluir", linha: produtos[i].linha }) });
+        carregar();
+    }
+}
+
+function mostrarBarcode(cod, prod, marca) {
+    document.getElementById('b-name').innerText = prod;
+    document.getElementById('b-brand').innerText = marca;
+
+    const modal = document.getElementById('modalBarcodeFull');
+    modal.style.display = 'flex';
+
+    // 🔒 trava scroll da página
+    document.body.style.overflow = 'hidden';
+
+    bwipjs.toCanvas('barcodeCanvas', {
+        bcid: 'code128',
+        text: String(cod),
+        scale: 3,
+        height: 12,
+        includetext: true
+    });
+}
+
+function fecharBarcodeModal() {
+    document.getElementById('modalBarcodeFull').style.display = 'none';
+
+    // 🔓 libera scroll novamente
+    document.body.style.overflow = '';
+}
+
+function abrirCamera(){
+    const m = document.createElement('div');
+    m.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:40000;display:flex;flex-direction:column;align-items:center;justify-content:center;";
+    m.innerHTML = `<div id="v" style="width:300px;"></div><button class="btn btn-light mt-4" id="c">FECHAR</button>`;
+    document.body.appendChild(m);
+    const q = new Html5Qrcode("v");
+    document.getElementById("c").onclick = () => q.stop().then(() => m.remove());
+    q.start({facingMode:"environment"}, {fps:15,qrbox:250}, (txt) => { document.getElementById("codigoInput").value = txt; buscarAPI(txt); q.stop().then(() => m.remove()); });
+}
+
+// Ativar botão X para limpar input
+document.addEventListener("input", function(e) {
+    if (e.target.classList.contains("input-clear")) {
+        const wrapper = e.target.parentElement;
+        const btn = wrapper.querySelector(".clear-btn");
+        btn.style.display = e.target.value ? "block" : "none";
+    }
+});
+
+document.addEventListener("click", function(e) {
+    if (e.target.classList.contains("clear-btn")) {
+        const wrapper = e.target.parentElement;
+        const input = wrapper.querySelector("input");
+        input.value = "";
+        e.target.style.display = "none";
+        input.focus();
+    }
+});
+
+function filtrar(valor) {
+
+    const termo = valor.toLowerCase().trim();
+
+    if (!termo) {
+        produtos = [...produtosOriginais];
+        renderizar();
+        return;
+    }
+
+    produtos = produtosOriginais.filter(p =>
+        (p.categoria && p.categoria.toLowerCase().includes(termo)) ||
+        (p.marca && p.marca.toLowerCase().includes(termo)) ||
+        (p.produto && p.produto.toLowerCase().includes(termo)) ||
+        (p.codigo && String(p.codigo).toLowerCase().includes(termo))
+    );
+
+    renderizar();
+}
+</script>
+</body>
+</html>
