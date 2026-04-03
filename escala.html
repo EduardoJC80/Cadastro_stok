@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escala SC-21 - Alerta +/- 15min</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        .clock-container {
+            font-size: 2rem; font-weight: 800; text-align: center; margin: 10px auto;
+            color: #fff; background: #212529; padding: 5px 20px; border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: inline-block;
+        }
+        .table-main-container { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .table thead { background-color: #212529; color: white; position: sticky; top: 0; z-index: 10; }
+        th { padding: 8px !important; text-align: center; font-size: 0.65rem; text-transform: uppercase; border: 1px solid #444; }
+        td { vertical-align: middle; text-align: center; padding: 0 !important; height: 45px; font-weight: 600; border: 1px solid #dee2e6; font-size: 0.8rem; }
+        
+        input { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-weight: bold; color: inherit; outline: none; }
+        input[type="time"] { cursor: pointer; }
+        input:disabled { background-color: #f8f9fa; cursor: default; }
+        
+        .select-status { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-weight: bold; color: inherit; outline: none; }
+
+        /* Estilo para Caixas Duplicados */
+        .input-igual { background-color: #8B0000 !important; color: #FFCCCB !important; }
+
+        /* Cores de Status */
+        .status-operando { background-color: #007bff !important; color: white !important; }
+        .status-disponivel { background-color: #d2b48c !important; color: #3e2723 !important; }
+        .status-liberando { background-color: #8b0000 !important; color: white !important; }
+        .status-ausente-fechado { background-color: #000000 !important; color: white !important; }
+
+        /* Cores de Horário */
+        .hora-verde { background-color: #28a745 !important; color: white !important; }
+        .hora-alerta-vermelho { background-color: #ff0000 !important; color: white !important; }
+        .hora-fechada-preto { background-color: #000000 !important; color: white !important; }
+        
+        .col-nome { min-width: 250px; text-align: left; padding-left: 10px !important; background-color: #fff; text-transform: uppercase; font-size: 0.75rem; }
+        .col-obs-sep { width: 40px; background-color: #f1f1f1 !important; border-left: 2px solid #212529 !important; border-right: 2px solid #212529 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid py-2">
+    <div class="text-center mb-2">
+        <h5 class="fw-bold m-0">FRENTE DE CAIXA - SC-21</h5>
+        <div id="clock" class="clock-container">00:00:00</div>
+    </div>
+
+    <div class="table-main-container">
+        <div class="table-responsive" style="max-height: 85vh;">
+            <table class="table table-bordered m-0">
+                <thead>
+                    <tr>
+                        <th>Mat.</th>
+                        <th class="col-nome">Nome</th>
+                        <th>Situação</th>
+                        <th>Caixa</th>
+                        <th>Início</th>
+                        <th>Int.</th>
+                        <th>Volta</th>
+                        <th>Saída</th>
+                        <th class="col-obs-sep"></th>
+                        <th class="table-dark">Real Ent.</th>
+                        <th class="table-dark">Real Int.</th>
+                        <th class="table-dark">Real Vol.</th>
+                        <th class="table-dark">Real Sai.</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-corpo"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const funcionarios = [
+        { mat: "226651", nome: "VIVIANE ACOSTA ALVES", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "239625", nome: "THAYNARA FATIMA FREITAS DA SILVA GOULART", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "245888", nome: "SABRINA DE MELLO DE OLIVEIRA DO NASCIMENTO", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "226851", nome: "MARIELE INOCENCIO BARBOSA", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "230214", nome: "MARIA RITA DA ROSA", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "219259", nome: "LUANA CRISTINA MARASCHIN", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "220467", nome: "JULIANA GLOVASKI KOSVOSKI", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21015", nome: "GOLD15", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21014", nome: "GOLD14", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21013", nome: "GOLD13", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21012", nome: "GOLD12", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21011", nome: "GOLD11", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21010", nome: "GOLD10", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21009", nome: "GOLD09", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21008", nome: "GOLD08", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21007", nome: "GOLD07", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21006", nome: "GOLD06", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21005", nome: "GOLD05", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21004", nome: "GOLD04", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21003", nome: "GOLD03", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21002", nome: "GOLD02", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "GOLD21001", nome: "GOLD01", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "232734", nome: "EDUARDO JORGE CANTERLE", h: ["06:50", "12:00", "14:00", "16:50"] },
+        { mat: "234173", nome: "YURIANNIS DEL VALLE FUENMAYOR ROMERO", h: ["07:30", "12:00", "14:00", "17:30"] },
+        { mat: "228324", nome: "PATRICIA VARES DAMIAN", h: ["07:30", "12:00", "14:00", "17:30"] },
+        { mat: "237662", nome: "HELANA SCHREIBER MAZURKEWICZ", h: ["07:30", "12:00", "14:00", "17:30"] },
+        { mat: "233968", nome: "CLEBER REGIS HAMMARSTROM JUNIOR", h: ["07:30", "12:00", "14:00", "17:30"] },
+        { mat: "214578", nome: "JESSICA DE OLIVEIRA SILVEIRA", h: ["08:00", "-", "-", "12:00"] },
+        { mat: "227055", nome: "GABRIELI DORNELLES ROLIN", h: ["08:00", "-", "-", "09:30"] },
+        { mat: "231906", nome: "FERNANDA CANABARRO DA SILVA", h: ["08:00", "-", "-", "12:00"] },
+        { mat: "242027", nome: "BERENICE RODRIGUES DA SILVA HEDLUND", h: ["08:00", "12:00", "14:00", "18:00"] },
+        { mat: "233839", nome: "ANA PAULA OLIVEIRA VIEIRA", h: ["08:00", "-", "-", "10:00"] },
+        { mat: "230225", nome: "JOSIELI APARECIDA GOMES CARVALHO", h: ["09:00", "12:00", "14:00", "19:00"] },
+        { mat: "227055", nome: "GABRIELI DORNELLES ROLIN", h: ["11:30", "-", "-", "12:00"] },
+        { mat: "245883", nome: "THULIANA SUELI PRACER FERREIRA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "246136", nome: "SAMANTA KRUGER KIRSCHNICK CICHORSKI", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "244937", nome: "RENATA DE CAMARGO FRANKE", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "246144", nome: "KELY CRISTINA ALBUQUERQUE MATIAS", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "239630", nome: "KATIELE SCHMIT DO NASCIMENTO", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "243448", nome: "JULIA VITORIA RODRIGUES", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "245886", nome: "GIANE GRUBERT STOQUERA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "244580", nome: "GESIANE TATIANA PEREIRA OLIVEIRA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "239629", nome: "GABRIELE APARECIDA TRINDADE FERNANDES", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "245248", nome: "EVELYN EDUARDA DE OLIVEIRA VIEIRA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "234097", nome: "ESTEFANI MILENA MAI KARLINSKI", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "239632", nome: "ELIANE DE ASSUNCAO BENTO", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "243408", nome: "CARLA ELISABETE MOURA DA SILVA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "242602", nome: "ANA CLAUDIA DE OLIVEIRA FERREIRA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "246146", nome: "ANA CAROLINA QUARESMA DA SILVA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "236340", nome: "ALINE DE OLIVEIRA", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "225467", nome: "ADRIANE CORTES MARTINS", h: ["12:00", "14:00", "16:00", "22:00"] },
+        { mat: "GOLD21026", nome: "GOLD26", h: ["FOLGA", "-", "-", "-"] },
+        { mat: "GOLD21025", nome: "GOLD25", h: ["FOLGA", "-", "-", "-"] }
+    ];
+
+    const corpo = document.getElementById('tabela-corpo');
+
+    funcionarios.forEach(f => {
+        const tr = document.createElement('tr');
+        const isFolga = f.h[0] === "FOLGA";
+        tr.className = isFolga ? 'row-funcionario status-ausente-fechado' : 'row-funcionario';
+        
+        tr.innerHTML = `
+            <td style="background:#eee">${f.mat}</td>
+            <td class="col-nome">${f.nome}</td>
+            <td class="td-status">
+                <select class="select-status nav-item" onchange="atualizarS(this)">
+                    <option value="">---</option>
+                    <option value="status-operando">OPERANDO</option>
+                    <option value="status-disponivel">DISPONÍVEL</option>
+                    <option value="status-liberando">LIBERANDO</option>
+                    <option value="status-ausente-fechado" ${isFolga ? 'selected' : ''}>FECHADO</option>
+                </select>
+            </td>
+            <td><input type="text" class="nav-item input-caixa" oninput="validarDuplicados()"></td>
+            <td class="c-h">${f.h[0]}</td><td class="c-h">${f.h[1]}</td>
+            <td class="c-h">${f.h[2]}</td><td class="c-h">${f.h[3]}</td>
+            <td class="col-obs-sep"><input type="text" disabled></td>
+            <td class="c-h-real"><input type="time" class="nav-item"></td>
+            <td class="c-h-real"><input type="time" class="nav-item"></td>
+            <td class="c-h-real"><input type="time" class="nav-item"></td>
+            <td class="c-h-real"><input type="time" class="nav-item"></td>
+        `;
+        corpo.appendChild(tr);
+    });
+
+    function validarDuplicados() {
+        const inputs = document.querySelectorAll('.input-caixa');
+        const valores = Array.from(inputs).map(i => i.value.trim());
+        
+        inputs.forEach(input => {
+            const val = input.value.trim();
+            if (val !== "" && valores.filter(v => v === val).length > 1) {
+                input.classList.add('input-igual');
+            } else {
+                input.classList.remove('input-igual');
+            }
+        });
+    }
+
+    // Eventos de Teclado
+    document.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        if (!active.classList.contains('nav-item')) return;
+        const inputs = Array.from(document.querySelectorAll('.nav-item'));
+        const index = inputs.indexOf(active);
+        const cols = 6; 
+
+        if (e.key === 'Enter' && active.classList.contains('input-caixa')) {
+            e.preventDefault();
+            inputs[index + cols]?.focus();
+        }
+        if (e.key === 'ArrowRight') inputs[index + 1]?.focus();
+        if (e.key === 'ArrowLeft') inputs[index - 1]?.focus();
+        if (e.key === 'ArrowDown') inputs[index + cols]?.focus();
+        if (e.key === 'ArrowUp') inputs[index - cols]?.focus();
+    });
+
+    function monitorar() {
+        const agora = new Date();
+        document.getElementById('clock').textContent = agora.toLocaleTimeString('pt-BR');
+        
+        document.querySelectorAll('.row-funcionario').forEach(linha => {
+            const celPrevistas = linha.querySelectorAll('.c-h');
+            const celReais = linha.querySelectorAll('.c-h-real');
+            const sel = linha.querySelector('.select-status');
+            const hSaida = celPrevistas[3].innerText;
+
+            const dS = diffM(hSaida, agora);
+
+            // Regra Global de Fechamento (Saída já passou há mais de 1h)
+            if (dS <= -60) {
+                celPrevistas.forEach(c => c.className = "c-h hora-fechada-preto");
+                if (sel.value !== "status-ausente-fechado") { 
+                    sel.value = "status-ausente-fechado"; 
+                    atualizarS(sel); 
+                }
+            } else {
+                celPrevistas.forEach(c => {
+                    const d = diffM(c.innerText, agora);
+                    
+                    // NOVA REGRA: Se o horário já passou (atraso maior que 15min), fica PRETO
+                    if (d < -15) {
+                        c.className = "c-h hora-fechada-preto";
+                    } 
+                    // Vermelho se estiver na janela de alerta (+/- 15min)
+                    else if (d <= 15 && d >= -15) {
+                        c.className = "c-h hora-alerta-vermelho";
+                    } 
+                    // Verde se ainda for futuro
+                    else {
+                        c.className = "c-h hora-verde";
+                    }
+                });
+            }
+
+            // Regras do Horário Real
+            celReais.forEach(td => {
+                const val = td.querySelector('input').value;
+                if (val) {
+                    const dR = diffM(val, agora);
+                    td.className = "c-h-real " + ((dR <= 15 && dR >= -15) ? "hora-alerta-vermelho" : "hora-verde");
+                } else {
+                    td.className = "c-h-real";
+                }
+            });
+        });
+    }
+
+    function diffM(h, ag) {
+        if (!h || h === "-" || !h.includes(':')) return 999;
+        const [hh, mm] = h.split(':').map(Number);
+        const r = new Date(ag); r.setHours(hh, mm, 0, 0);
+        return Math.floor((r - ag) / 60000);
+    }
+
+    function atualizarS(e) { e.parentElement.className = "td-status " + e.value; }
+
+    setInterval(monitorar, 1000);
+    monitorar();
+</script>
+</body>
+</html>
