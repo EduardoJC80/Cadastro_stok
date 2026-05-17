@@ -359,7 +359,7 @@
 // ======================================
 // CONFIGURAÇÕES - INSIRA SUA URL AQUI
 // ======================================
-const API_URL = "https://script.google.com/macros/s/AKfycbwBWlBU0S1Dtar6aPPfbYzOFq2zT0YPerJtZFvgGUJKHX5H_UYCC5sOoTz_ibZ_tqTiCA/exec"
+const API_URL = "https://script.google.com/macros/s/AKfycbyP416h4tDkV_dHUJ1njSXgVpwPxfUnJ7m12GOzIVcXAbO0lvhLsq0U2tcCKLiASwhVWw/exec";
 
 let dbEscalas = [];
 let dbPontos = [];
@@ -399,7 +399,7 @@ function atualizarRelogio() {
 }
 
 // ======================================
-// LEITURA DE DADOS (TÉCNICA JSONP - SEM FETCH / ANTI-CORS)
+// LEITURA DE DADOS (MÉTODO TEXTO PURO - ANTI-CORS)
 // ======================================
 function carregarDados() {
     console.log("Conectando à API via canal seguro...");
@@ -427,7 +427,7 @@ function retornoEscalas(dados) {
     dbEscalas = dados.map((item, i) => ({
         ...item,
         _index: i + 2,
-        Data: limparData(item.Data)
+        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
     }));
     renderAdmin();
 }
@@ -437,19 +437,9 @@ function retornoPontos(dados) {
     dbPontos = dados.map((item, i) => ({
         ...item,
         _index: i + 2,
-        Data: limparData(item.Data)
+        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
     }));
     renderAdmin();
-}
-
-function limparData(dataStr) {
-    if (!dataStr) return "";
-    let d = String(dataStr).trim();
-    if (d.includes("-")) {
-        const partes = d.split('T')[0].split('-');
-        if (partes[0].length === 4) return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    }
-    return d;
 }
 
 // ======================================
@@ -515,7 +505,6 @@ async function salvarEscala() {
     btn.innerText = "SALVANDO...";
 
     try {
-        // Envio POST cego (Não trava o CORS porque enviamos sem exigir retorno imediato)
         await fetch(API_URL, {
             method: "POST",
             mode: "no-cors",
@@ -523,7 +512,7 @@ async function salvarEscala() {
         });
         
         bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        setTimeout(carregarDados, 1500); // Aguarda o Sheets processar e recarrega
+        setTimeout(carregarDados, 1500);
     } catch (e) {
         console.error("Erro no envio:", e);
         bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
