@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ponto Gold Elite - Admin</title>    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root { 
+            --primary: #c5a059; 
+            --primary-dark: #a68543;
+            --bg: #121212; 
+            --card: #ffffff; 
+            --text-main: #1a1a1a; 
+            --text-dim: #757575; 
+            --danger: #dc2626; 
+            --warning: #f59e0b; 
+            --success: #c5a059; 
+            --gray-light: #f5f5f5;
+            --gray-medium: #e5e5e5;}
+        body { 
+            background: var(--bg); 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 15px; 
+        }
+        .main-container { 
+            width: 100%; 
+            max-width: 1400px; 
+            height: 95vh; 
+            background: var(--card); 
+            border-radius: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.7); 
+            overflow: hidden; 
+            border: 1px solid rgba(197, 160, 89, 0.2);}
+        .app-header { 
+            padding: 15px 40px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid var(--gray-medium); 
+            background: white; 
+            z-index: 10; }
+        .screen { display: none; padding: 30px; flex: 1; overflow-y: auto; }
+        .screen.active { display: flex; flex-direction: column; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .stats-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; width: 100%; position: relative; }
+        .stat-card { 
+            background: var(--gray-light); 
+            padding: 20px; 
+            border-radius: 24px; 
+            border: 1px solid var(--gray-medium); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            transition: 0.3s; 
+            position: relative; 
+            cursor: default; }
+        .stat-card:hover { 
+            transform: translateY(-5px); 
+            border-color: var(--primary); 
+            background: #fff; 
+            box-shadow: 0 10px 30px rgba(197, 160, 89, 0.1); }
+        .stat-icon { font-size: 28px; margin-bottom: 8px; color: var(--primary) !important; }
+        .stat-label { font-size: 12px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 36px; font-weight: 800; color: var(--bg); line-height: 1; margin-top: 5px; }
+        .hover-list { position: absolute; bottom: 105%; left: 0; width: 100%; background: #1a1a1a; color: #d1d1d1; border-radius: 18px; padding: 15px; z-index: 100; display: none; font-size: 11px; box-shadow: 0 -10px 20px rgba(0,0,0,0.4); border: 1px solid var(--primary); }
+        .stat-card:hover .hover-list { display: block; }
+        .clock-wrapper { text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+        #clock { font-size: 110px; font-weight: 800; color: var(--bg); letter-spacing: -4px; line-height: 0.9; }
+        #date-full { font-size: 18px; color: var(--text-dim); font-weight: 600; text-transform: capitalize; margin-bottom: 20px; }
+        .futuristic-input { width: 100%; max-width: 480px; border: 2px solid var(--gray-medium); border-radius: 24px; padding: 22px; font-size: 32px; text-align: center; font-family: 'JetBrains Mono'; font-weight: 800; outline: none; color: var(--bg); }
+        .futuristic-input:focus { border-color: var(--primary); }
+        .btn-ponto-main {width: 100%; max-width: 480px; height: 85px; border-radius: 24px; border: none; background: var(--bg); color: var(--primary); 
+            font-size: 22px; font-weight: 800; cursor: pointer; transition: 0.3s; margin-top: 15px; border: 2px solid var(--primary); }
+        .btn-ponto-main:hover { background: var(--primary); color: var(--bg); }
+        .date-box { position: relative; display: flex; align-items: center; background: var(--gray-light); border: 1px solid var(--gray-medium); border-radius: 15px; padding: 8px 15px; }
+        .date-box input { border: none; background: transparent; outline: none; font-weight: 800; color: var(--primary); width: 120px; text-align: center; }
+        .picker-trigger { position: absolute; width: 30px; right: 10px; opacity: 0; cursor: pointer; }
+        .glass-card { background: #fff; border-radius: 25px; padding: 25px; border: 1px solid var(--gray-medium); margin-bottom: 25px; }
+        .table-title { font-weight: 800; font-size: 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; color: var(--bg); }
+        .table-custom { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .table-custom td { background: var(--gray-light); padding: 15px 10px; border-top: 1px solid var(--gray-medium); font-size: 14px; text-align: center; vertical-align: middle; }
+        .colab-info { text-align: left; padding-left: 20px !important; }
+        .colab-name { display: block; font-weight: 800; color: var(--text-main); font-size: 15px; }
+        .colab-cpf-sub { display: block; font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono'; font-weight: 600; }
+        .btn-export { background: var(--bg); color: var(--primary); border: 1px solid var(--primary); padding: 8px 15px; border-radius: 12px; font-size: 12px; 
+            font-weight: 800; cursor: pointer; transition: 0.3s; }
+        .btn-export:hover { background: var(--primary); color: var(--bg); }
+        .btn-exit-top { background: var(--gray-light); color: var(--text-main); border: 1px solid var(--gray-medium); padding: 8px 18px; border-radius: 12px; font-weight: 800; font-size: 12px; cursor: pointer; }
+        .btn-exit-top:hover { background: var(--danger); color: white; border-color: var(--danger); }
+        .pass-dot-input { background: var(--gray-light); border: 2px solid transparent; border-radius: 20px; padding: 20px; font-size: 24px; letter-spacing: 10px; text-align: center; width: 100%; }
+        .pass-dot-input:focus { border-color: var(--primary); outline: none; }
+        .modal-fullscreen { margin: 0; width: 100vw; max-width: none; height: 100vh; }
+        .modal-fullscreen .modal-content { border-radius: 0; height: 100vh; background: var(--card); }
+        .btn-primary { background-color: var(--bg); border-color: var(--primary); color: var(--primary); font-weight: 800;}
+        .btn-primary:hover { background-color: var(--primary); border-color: var(--primary); color: var(--bg); }
+        .btn-outline-primary { border-color: var(--primary); color: var(--primary); font-weight: 800; }
+        .btn-outline-primary:hover { background-color: var(--primary); border-color: var(--primary); color: var(--bg); }
+        .btn-success { background-color: var(--primary); border-color: var(--primary); color: var(--bg); font-weight: 800;}
+        .btn-success:hover { background-color: var(--primary-dark); border-color: var(--primary-dark); color: var(--bg); }
+        .text-primary { color: var(--primary) !important; }
+        .bg-light { background-color: var(--gray-light) !important; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 0.25rem rgba(197, 160, 89, 0.25); }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="app-header">
+        <div class="fw-800 text-primary" style="font-size: 24px;">PONTO<span style="color: var(--bg)">GOLD</span></div>
+        <button id="btnSairHeader" class="btn-exit-top" style="display: none;" onclick="sairAdmin()">SAIR DO PAINEL</button>
+    </div>
+    <div id="screenPonto" class="screen active">
+        <div class="clock-wrapper">
+            <div id="clock">00:00:00</div>
+            <div id="date-full">---</div>
+            <input id="cpfIn" class="futuristic-input" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+           <button
+    class="btn-ponto-main"
+    onclick="verificarCPFAdmin()">
+
+    REGISTRAR PONTO
+
+</button>
+        </div>
+    </div>
+    <div id="screenAdmin" class="screen">
+        <div class="d-flex justify-content-center mb-4">
+            <div class="date-box me-3">
+                <input type="text" id="filtroDataAdmin" placeholder="00/00/0000" maxlength="10">
+                <i class="bi bi-calendar-event text-primary"></i>
+                <input type="date" class="picker-trigger" onchange="syncDate(this.value, 'filtroDataAdmin')">
+            </div>  
+            <button class="btn btn-outline-primary fw-800 px-4 rounded-4 me-3" onclick="abrirModalRelatorio()">
+                <i class="bi bi-file-earmark-bar-graph"></i> RELATÓRIO MENSAL
+            </button>
+
+            <button
+    type="button"
+    class="btn btn-primary fw-800 px-4 rounded-4"
+    onclick="abrirModalCad()">
+
+    + NOVA ESCALA
+
+</button>
+        </div>
+        <div class="stats-container">
+            <div class="stat-card">
+                <i class="bi bi-calendar2-check stat-icon"></i>
+                <span class="stat-label">Escalados</span>
+                <span class="stat-value" id="countEscalados">0</span>
+                <div class="hover-list" id="listEscalados">Ninguém</div>
+            </div>
+            <div class="stat-card">
+                <i class="bi bi-person-check stat-icon"></i>
+                <span class="stat-label">Presença</span>
+                <span class="stat-value" id="countPresentes">0</span>
+                <div class="hover-list" id="listPresentes">Ninguém</div>
+            </div>
+            <div class="stat-card">
+                <i class="bi bi-person-x stat-icon" style="color: var(--danger) !important"></i>
+                <span class="stat-label">Faltas</span>
+                <span class="stat-value" id="countFaltas">0</span>
+                <div class="hover-list" id="listFaltas">Ninguém</div>
+            </div>
+        </div>
+        <div class="glass-card">
+            <div class="table-title">Escala do Dia</div>
+            <table class="table-custom">
+                <thead><tr><th class="text-start ps-4">Colaborador</th><th>Horário Escala</th><th>Ações</th></tr></thead>
+                <tbody id="tabEscalados"></tbody>
+            </table>
+        </div>
+        <div class="glass-card">
+            <div class="table-title">
+                Registros de Ponto (Filtro Diário)
+                <button class="btn-export" onclick="exportarExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> EXPORTAR DIA
+                </button>
+            </div>
+            <table class="table-custom">
+                <thead><tr><th class="text-start ps-4">Colaborador</th><th>Entrada</th><th>Intervalo</th><th>Volta</th><th>Saída</th><th>Ações</th></tr></thead>
+                <tbody id="tabStatus"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- MODAL SENHA -->
+<div class="modal fade" id="modalSenha" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-5 p-4 text-center">
+            <h5 class="fw-800">Acesso Restrito</h5>
+            <input id="adminPass" type="password" class="pass-dot-input mt-3" maxlength="4" placeholder="••••">
+            <button class="btn btn-primary w-100 py-3 rounded-4 fw-800 mt-3" onclick="validarSenha()">ENTRAR</button>
+            <button class="btn btn-link btn-sm text-dim mt-2" data-bs-dismiss="modal" onclick="document.getElementById('cpfIn').value=''">Cancelar</button>
+        </div>
+    </div>
+</div>
+<!-- MODAL RELATÓRIO -->
+<div class="modal fade" id="modalRelatorio" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0 px-5 pt-4">
+                <div>
+                    <h3 class="fw-800 m-0 text-primary">Relatório de Período</h3>
+                    <p class="text-dim m-0">Consulte e exporte os registros do período selecionado</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-5">
+                <div class="row g-3 align-items-end mb-4 bg-light p-4 rounded-5">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-dim">DATA INÍCIO</label>
+                        <input type="date" id="relatorioInicio" class="form-control py-3 rounded-4 border-0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-dim">DATA FIM</label>
+                        <input type="date" id="relatorioFim" class="form-control py-3 rounded-4 border-0">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="buscarRelatorio()">
+                            <i class="bi bi-search"></i> BUSCAR
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-success w-100 py-3 rounded-4 fw-800" onclick="exportarRelatorioMensal('ambos')">
+                            <i class="bi bi-file-earmark-excel"></i> BAIXAR TUDO (XLS)
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="table-title">
+                                Escalas do Período
+                                <button class="btn-export" onclick="exportarRelatorioMensal('escalas')">BAIXAR XLS</button>
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px;">
+                                <table class="table-custom">
+                                    <thead><tr><th class="text-start ps-4">Colaborador</th><th>Data</th><th>Horário</th></tr></thead>
+                                    <tbody id="corpoRelEscalas"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="glass-card">
+                            <div class="table-title">
+                                Pontos do Período
+                                <button class="btn-export" onclick="exportarRelatorioMensal('pontos')">BAIXAR XLS</button>
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px;">
+                                <table class="table-custom">
+                                    <thead><tr><th class="text-start ps-4">Colaborador</th><th>Data</th><th>Ponto</th></tr></thead>
+                                    <tbody id="corpoRelPontos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- MODAL CONFIRMAÇÃO PONTO -->
+<div class="modal fade" id="modalConfirmPonto" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg rounded-5 p-5 text-center">
+        <h3 class="fw-800" id="confNome">---</h3>
+        <p id="confTipo" class="fw-bold text-primary"></p>
+        <h2 class="display-5 fw-800" id="confHora">00:00</h2>
+        <button class="btn btn-primary w-100 py-3 rounded-4 fw-800 mt-4" data-bs-dismiss="modal">CONCLUÍDO</button>
+    </div></div>
+</div>
+<!-- MODAL CADASTRO / EDIÇÃO ESCALA -->
+<div class="modal fade" id="modalCad" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-5 p-4">
+            <h5 class="fw-800 mb-4" id="modalCadTitulo">Nova Escala</h5>
+
+            <input type="hidden" id="editEscalaIdx">
+
+            <input id="cadNome" placeholder="Nome do Funcionário" class="form-control mb-3 rounded-4 border-0 bg-light py-3">
+
+            <input id="cadCPF" placeholder="CPF" class="form-control mb-3 rounded-4 border-0 bg-light py-3" maxlength="14">
+
+            <div class="date-box mb-3" style="width: 100%;">
+
+                <input
+                    type="text"
+                    id="cadData"
+                    placeholder="Data 00/00/0000"
+                    maxlength="10"
+                    style="width: 100%; text-align: left;"
+                    oninput="formatarData(this)">
+
+                <i class="bi bi-calendar-event text-primary"></i>
+
+                <input
+                    type="date"
+                    class="picker-trigger"
+                    onchange="
+                        if(this.value){
+                            const partes = this.value.split('-');
+                            document.getElementById('cadData').value =
+                                partes[2] + '/' + partes[1] + '/' + partes[0];
+                        }
+                    ">
+            </div>
+
+            <input id="cadHora" type="time" class="form-control mb-4 rounded-4 border-0 bg-light py-3">
+
+            <button class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="salvarEscala()">
+                SALVAR ESCALA
+            </button>
+        </div>
+    </div>
+</div>
+<!-- MODAL EDIÇÃO PONTO -->
+<div class="modal fade" id="modalEditPonto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-5 p-4">
+            <h5 class="fw-800 mb-4">Editar Registro de Ponto</h5>
+            <input type="hidden" id="editPontoIdx">
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="small fw-bold">Entrada</label>
+                    <input id="editPontoE" type="time" class="form-control rounded-4 border-0 bg-light py-2">
+                </div>
+                <div class="col-6">
+                    <label class="small fw-bold">Intervalo</label>
+                    <input id="editPontoI" type="time" class="form-control rounded-4 border-0 bg-light py-2">
+                </div>
+                <div class="col-6">
+                    <label class="small fw-bold">Volta</label>
+                    <input id="editPontoV" type="time" class="form-control rounded-4 border-0 bg-light py-2">
+                </div>
+                <div class="col-6">
+                    <label class="small fw-bold">Saída</label>
+                    <input id="editPontoS" type="time" class="form-control rounded-4 border-0 bg-light py-2">
+                </div>
+            </div>
+            <button class="btn btn-primary w-100 py-3 rounded-4 fw-800 mt-4" onclick="salvarEdicaoPonto()">SALVAR ALTERAÇÕES</button>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+
+// ======================================
+// CONFIGURAÇÕES - INSIRA SUA URL AQUI
+// ======================================
+const API_URL = "https://script.google.com/macros/s/AKfycbzY7m2LRTGJVvQRjGEATtSxQNe4ffWa_iB8_659ICapGZlDAgXlQGwuEInVTs3PtHPivA/exec"; 
+
+let dbEscalas = [];
+let dbPontos = [];
+
+// ======================================
+// INICIALIZAÇÃO
+// ======================================
+window.onload = () => {
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+    
+    // Define a data de hoje no campo de busca
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    document.getElementById('filtroDataAdmin').value = hoje;
+
+    // Listeners de Máscaras
+    document.getElementById('cpfIn').addEventListener('input', mascaraCPF);
+    document.getElementById('cadCPF').addEventListener('input', mascaraCPF);
+    
+    document.getElementById('filtroDataAdmin').addEventListener('input', (e) => {
+        mascaraData(e.target);
+        if(e.target.value.length === 10) renderAdmin();
+    });
+    
+    document.getElementById('cadData').addEventListener('input', (e) => mascaraData(e.target));
+
+    // Carregamento Inicial
+    carregarDados();
+};
+
+function atualizarRelogio() {
+    const agora = new Date();
+    document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
+    document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    });
+}
+
+// ======================================
+// TRATAMENTO DE DADOS (O SEGREDO)
+// ======================================
+
+async function carregarDados() {
+    console.log("Conectando à API...");
+    try {
+        const [resE, resP] = await Promise.all([
+            fetch(`${API_URL}?tipo=escalas`),
+            fetch(`${API_URL}?tipo=ponto`)
+        ]);
+
+        const eData = await resE.json();
+        const pData = await resP.json();
+
+        // CONVERSÃO E LIMPEZA: Garante que 'Data' seja sempre 'DD/MM/YYYY'
+        dbEscalas = eData.map((item, i) => ({
+            ...item,
+            _index: i + 2,
+            Data: limparData(item.Data)
+        }));
+
+        dbPontos = pData.map((item, i) => ({
+            ...item,
+            _index: i + 2,
+            Data: limparData(item.Data)
+        }));
+
+        console.log("Escalas carregadas:", dbEscalas);
+        renderAdmin();
+    } catch (err) {
+        console.error("Erro ao carregar dados:", err);
+    }
+}
+
+// Função para garantir que a data vinda da planilha seja legível pelo filtro
+function limparData(dataStr) {
+    if (!dataStr) return "";
+    let d = String(dataStr).trim();
+    // Se a data vier no formato ISO (2026-05-17...), converte para BR
+    if (d.includes("-")) {
+        const partes = d.split('T')[0].split('-');
+        if (partes[0].length === 4) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return d;
+}
+
+// ======================================
+// RENDERIZAÇÃO NA TELA
+// ======================================
+
+function renderAdmin() {
+    const filtro = document.getElementById('filtroDataAdmin').value.trim();
+    
+    // Filtra as listas locais
+    const escDia = dbEscalas.filter(e => e.Data === filtro);
+    const ptsDia = dbPontos.filter(p => p.Data === filtro);
+
+    // Atualiza os contadores no topo
+    document.getElementById('countEscalados').innerText = escDia.length;
+    document.getElementById('countPresentes').innerText = ptsDia.length;
+    document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
+
+    // Renderiza Tabela de Escalas
+    const tabEsc = document.getElementById('tabEscalados');
+    if (escDia.length > 0) {
+        tabEsc.innerHTML = escDia.map(e => `
+            <tr>
+                <td class="text-start ps-4"><b>${e.Nome}</b><br><small>${e.CPF}</small></td>
+                <td>${e.Hora}</td>
+                <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
+            </tr>`).join('');
+    } else {
+        tabEsc.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-secondary">Nenhuma escala para este dia.</td></tr>';
+    }
+
+    // Renderiza Tabela de Pontos
+    const tabPts = document.getElementById('tabStatus');
+    if (ptsDia.length > 0) {
+        tabPts.innerHTML = ptsDia.map(p => `
+            <tr>
+                <td class="text-start ps-4"><b>${p.Nome}</b></td>
+                <td>${p.Entrada || '--:--'}</td>
+                <td>${p.Intervalo || '--:--'}</td>
+                <td>${p.Volta || '--:--'}</td>
+                <td>${p.Saída || '--:--'}</td>
+                <td><i class="bi bi-pencil text-primary"></i></td>
+            </tr>`).join('');
+    } else {
+        tabPts.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum ponto registrado.</td></tr>';
+    }
+}
+
+// ======================================
+// AÇÕES (SALVAR E EXCLUIR)
+// ======================================
+
+async function salvarEscala() {
+    const btn = document.getElementById('btnSalvarEscala');
+    const dados = {
+        Nome: document.getElementById('cadNome').value,
+        CPF: document.getElementById('cadCPF').value,
+        Data: document.getElementById('cadData').value,
+        Hora: document.getElementById('cadHora').value
+    };
+
+    if (!dados.Nome || dados.Data.length < 10) return alert("Preencha Nome e Data corretamente.");
+
+    btn.disabled = true;
+    btn.innerText = "SALVANDO...";
+
+    try {
+        const res = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ acao: "salvarEscala", data: dados })
+        });
+        const result = await res.json();
+        if (result.status) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+            await carregarDados(); // Recarrega a tabela na hora
+        }
+    } catch (e) {
+        alert("Erro ao salvar.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "SALVAR ESCALA";
+    }
+}
+
+async function deletarEscala(idx) {
+    if (!confirm("Excluir esta escala?")) return;
+    await fetch(API_URL, { 
+        method: "POST", 
+        body: JSON.stringify({ acao: "deletarEscala", index: idx }) 
+    });
+    carregarDados();
+}
+
+// ======================================
+// MÁSCARAS E NAVEGAÇÃO
+// ======================================
+
+function syncDate(valorISO, inputId) {
+    if (!valorISO) return;
+    const [ano, mes, dia] = valorISO.split('-');
+    document.getElementById(inputId).value = `${dia}/${mes}/${ano}`;
+    if (inputId === 'filtroDataAdmin') renderAdmin();
+}
+
+function mascaraData(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    input.value = v;
+}
+
+function mascaraCPF(e) {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
+}
+
+function abrirModalCad() {
+    document.getElementById('cadNome').value = "";
+    document.getElementById('cadCPF').value = "";
+    document.getElementById('cadData').value = document.getElementById('filtroDataAdmin').value;
+    new bootstrap.Modal(document.getElementById('modalCad')).show();
+}
+
+function verificarCPFAdmin() {
+    const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
+    if (cpf === "00000000000") new bootstrap.Modal(document.getElementById('modalSenha')).show();
+    else alert("Funcionalidade de bater ponto...");
+}
+
+function validarSenha() {
+    if (document.getElementById('adminPass').value === "1234") {
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+        document.getElementById('screenPonto').classList.remove('active');
+        document.getElementById('screenAdmin').classList.add('active');
+        document.getElementById('btnSairHeader').style.display = 'block';
+    } else { alert("Senha incorreta!"); }
+}
+
+function sairAdmin() {
+    document.getElementById('screenAdmin').classList.remove('active');
+    document.getElementById('screenPonto').classList.add('active');
+    document.getElementById('btnSairHeader').style.display = 'none';
+}
+</script>
+</body>
+</html>
