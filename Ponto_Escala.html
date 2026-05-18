@@ -355,149 +355,238 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+
 // ======================================
-// CONFIGURAÇÃO (URL DA SUA API)
+// CONFIGURAÇÕES - INSIRA SUA URL AQUI
 // ======================================
-const API_URL = "https://script.google.com/macros/s/AKfycbxHFR21FX_XjnH-C7vuH9LBpqF7tD1lypkRme4AQNbhVAi9UO4KjWmbqd10MFJ8nkdnmA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxwmw34yvV0OPSOvFd12VgLsIORPxziENJF8F2Gx8rYwGdeeeWRYaEXyXj0MbOsOpyC3w/exec";
 
 let dbEscalas = [];
 let dbPontos = [];
 
-// Auxiliares
-const getHojeBR = () => new Date().toLocaleDateString('pt-BR');
-const hParaMin = (h) => {
-    if (!h || h === "--:--") return 0;
-    const [hrs, min] = h.split(':').map(Number);
-    return (hrs * 60) + min;
-};
-
-// Inicialização
+// ======================================
+// INICIALIZAÇÃO AO CARREGAR A PÁGINA
+// ======================================
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
-    configurarCPF();
+    
+    // Define a data de hoje no campo de busca (17/05/2026)
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    document.getElementById('filtroDataAdmin').value = hoje;
+
+    // Configuração de Eventos e Máscaras
+    document.getElementById('cpfIn').addEventListener('input', mascaraCPF);
+    document.getElementById('cadCPF').addEventListener('input', mascaraCPF);
+    
+    document.getElementById('filtroDataAdmin').addEventListener('input', (e) => {
+        mascaraData(e.target);
+        if(e.target.value.length === 10) renderAdmin();
+    });
+    
+    document.getElementById('cadData').addEventListener('input', (e) => mascaraData(e.target));
+
+    // Carregamento Inicial dos Dados
     carregarDados();
-    document.getElementById('filtroDataAdmin').value = new Date().toISOString().split('T')[0];
 };
 
 function atualizarRelogio() {
     const agora = new Date();
-    document.getElementById('relogio').innerText = agora.toLocaleTimeString('pt-BR');
-    document.getElementById('dataAtual').innerText = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-}
-
-function configurarCPF() {
-    const el = document.getElementById('cpfIn');
-    el.addEventListener('input', (e) => {
-        let v = e.target.value.replace(/\D/g, "");
-        v = v.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-        e.target.value = v.substring(0, 14);
+    document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
+    document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
     });
 }
 
-function verTela(id) {
-    document.querySelectorAll('.tela-secao').forEach(t => t.style.display = 'none');
-    document.getElementById(id).style.display = 'block';
-    if(id === 'telaAdmin') renderAdmin();
+// ======================================
+// LEITURA DE DADOS (MÉTODO TEXTO PURO - ANTI-CORS)
+// ======================================
+function carregarDados() {
+    console.log("Conectando à API via canal seguro...");
+
+    // Remove scripts antigos da mesma requisição para limpar o HTML
+    const scriptsAntigos = document.querySelectorAll('.jsonp-script');
+    scriptsAntigos.forEach(s => s.remove());
+
+    // Injeta script dinâmico para carregar as Escalas sem dar erro de CORS
+    const scriptE = document.createElement('script');
+    scriptE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${new Date().getTime()}`;
+    scriptE.className = 'jsonp-script';
+    document.body.appendChild(scriptE);
+
+    // Injeta script dinâmico para carregar os Pontos sem dar erro de CORS
+    const scriptP = document.createElement('script');
+    scriptP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${new Date().getTime()}`;
+    scriptP.className = 'jsonp-script';
+    document.body.appendChild(scriptP);
 }
 
-async function carregarDados() {
-    try {
-        const [resE, resP] = await Promise.all([
-            fetch(API_URL + "?tipo=escalas"),
-            fetch(API_URL + "?tipo=ponto")
-        ]);
-        dbEscalas = await resE.json();
-        dbPontos = await resP.json();
-    } catch (e) { console.error("Erro ao carregar dados do banco."); }
+// Funções globais que recebem as respostas diretas do Google Apps Script
+function retornoEscalas(dados) {
+    console.log("Dados de Escalas recebidos:", dados);
+    dbEscalas = dados.map((item, i) => ({
+        ...item,
+        _index: i + 2,
+        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
+    }));
+    renderAdmin();
 }
 
-// LÓGICA DE REGISTRO
-async function processarPonto() {
-    const cpf = document.getElementById('cpfIn').value;
-    const btn = document.getElementById('btnRegistrar');
-    if (cpf.length < 14) return alert("CPF incompleto.");
+function retornoPontos(dados) {
+    console.log("Dados de Pontos recebidos:", dados);
+    dbPontos = dados.map((item, i) => ({
+        ...item,
+        _index: i + 2,
+        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
+    }));
+    renderAdmin();
+}
 
-    // Trava do botão
-    btn.disabled = true;
-    btn.querySelector('.txt-btn').style.display = 'none';
-    btn.querySelector('.loader').style.display = 'inline-block';
-
-    const hoje = getHojeBR();
-    const agora = new Date();
-    const agoraStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const agoraMin = hParaMin(agoraStr);
-
-    const escala = dbEscalas.find(e => e.CPF === cpf && new Date(e.Data).toLocaleDateString('pt-BR') === hoje);
+// ======================================
+// RENDERIZAÇÃO DAS TABELAS
+// ======================================
+function renderAdmin() {
+    const filtro = document.getElementById('filtroDataAdmin').value.trim();
+    console.log("Filtrando para a data:", filtro);
     
-    if (!escala) {
-        exibirFeedback("ERRO", "Você não está escalado para hoje.", "---", "text-danger", "bi-x-circle-fill");
-        resetBtn();
-        return;
-    }
+    const escDia = dbEscalas.filter(e => e.Data === filtro);
+    const ptsDia = dbPontos.filter(p => p.Data === filtro);
 
-    let ponto = dbPontos.find(p => p.CPF === cpf && new Date(p.Data).toLocaleDateString('pt-BR') === hoje);
-    let acao = "";
-    let statusTexto = "";
+    // Atualiza Painel Numérico Superior
+    document.getElementById('countEscalados').innerText = escDia.length;
+    document.getElementById('countPresentes').innerText = ptsDia.length;
+    document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
 
-    // Lógica de Batidas e Travas
-    if (!ponto) {
-        const diff = agoraMin - hParaMin(escala.Hora);
-        statusTexto = diff > 5 ? `ATRASADO ${diff} min` : (diff < -5 ? `ANTECIPADO ${Math.abs(diff)} min` : "NO HORÁRIO");
-        ponto = { Nome: escala.Nome, CPF: cpf, Data: hoje, Entrada: agoraStr, Intervalo: "--:--", Volta: "--:--", Saída: "--:--", _index: null };
-        acao = "ENTRADA";
-    } else if (ponto.Intervalo === "--:--") {
-        if (agoraMin - hParaMin(ponto.Entrada) < 45) return alert("Aguarde 45min após a entrada.");
-        ponto.Intervalo = agoraStr; acao = "SAÍDA INTERVALO";
-    } else if (ponto.Volta === "--:--") {
-        if (agoraMin - hParaMin(ponto.Intervalo) < 40) return alert("Aguarde 40min de intervalo.");
-        ponto.Volta = agoraStr; acao = "VOLTA INTERVALO";
-    } else if (ponto.Saída === "--:--") {
-        ponto.Saída = agoraStr; acao = "SAÍDA FINAL";
+    // Tabela Escalas do Dia
+    const tabEsc = document.getElementById('tabEscalados');
+    if (escDia.length > 0) {
+        tabEsc.innerHTML = escDia.map(e => `
+            <tr>
+                <td class="text-start ps-4"><b>${e.Nome}</b><br><small>${e.CPF}</small></td>
+                <td>${e.Hora}</td>
+                <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
+            </tr>`).join('');
     } else {
-        exibirFeedback("AVISO", "Ponto já finalizado hoje.", "---", "text-warning", "bi-exclamation-triangle-fill");
-        resetBtn();
-        return;
+        tabEsc.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-secondary">Nenhuma escala para este dia.</td></tr>';
     }
+
+    // Tabela Registros de Ponto
+    const tabPts = document.getElementById('tabStatus');
+    if (ptsDia.length > 0) {
+        tabPts.innerHTML = ptsDia.map(p => `
+            <tr>
+                <td class="text-start ps-4"><b>${p.Nome}</b></td>
+                <td>${p.Entrada || '--:--'}</td>
+                <td>${p.Intervalo || '--:--'}</td>
+                <td>${p.Volta || '--:--'}</td>
+                <td>${p.Saída || '--:--'}</td>
+                <td><i class="bi bi-pencil text-primary" style="cursor:pointer"></i></td>
+            </tr>`).join('');
+    } else {
+        tabPts.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum ponto registrado.</td></tr>';
+    }
+}
+
+// ======================================
+// ENVIO DE DADOS (SALVAR E EXCLUIR VIA POST)
+// ======================================
+async function salvarEscala() {
+    const btn = document.getElementById('btnSalvarEscala');
+    const dados = {
+        Nome: document.getElementById('cadNome').value,
+        CPF: document.getElementById('cadCPF').value,
+        Data: document.getElementById('cadData').value,
+        Hora: document.getElementById('cadHora').value
+    };
+
+    if (!dados.Nome || dados.Data.length < 10) return alert("Preencha Nome e Data corretamente.");
+
+    btn.disabled = true;
+    btn.innerText = "SALVANDO...";
 
     try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: "POST",
-            body: JSON.stringify({ acao: ponto._index ? "editarLinhaPonto" : "salvarPonto", index: ponto._index, data: ponto })
+            mode: "no-cors",
+            body: JSON.stringify({ acao: "salvarEscala", data: dados })
         });
         
-        exibirFeedback(ponto.Nome, acao, statusTexto || agoraStr, "text-success", "bi-check-circle-fill");
-        document.getElementById('cpfIn').value = "";
-        await carregarDados();
+        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+        setTimeout(carregarDados, 1500);
     } catch (e) {
-        exibirFeedback("ERRO", "Falha ao conectar com o banco.", "---", "text-danger", "bi-cloud-slash");
+        console.error("Erro no envio:", e);
+        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+        setTimeout(carregarDados, 1500);
     } finally {
-        resetBtn();
+        btn.disabled = false;
+        btn.innerText = "SALVAR ESCALA";
     }
 }
 
-function exibirFeedback(titulo, subtitulo, hora, corClasse, icone) {
-    document.getElementById('msgTitulo').innerText = titulo;
-    document.getElementById('msgSubtitulo').innerText = subtitulo;
-    document.getElementById('msgHora').innerText = hora;
-    document.getElementById('iconFeedback').innerHTML = `<i class="bi ${icone} ${corClasse}" style="font-size: 4rem;"></i>`;
-    new bootstrap.Modal(document.getElementById('modalFeedback')).show();
+async function deletarEscala(idx) {
+    if (!confirm("Excluir esta escala?")) return;
+    try {
+        await fetch(API_URL, { 
+            method: "POST", 
+            mode: "no-cors",
+            body: JSON.stringify({ acao: "deletarEscala", index: idx }) 
+        });
+        setTimeout(carregarDados, 1200);
+    } catch(e) {
+        setTimeout(carregarDados, 1200);
+    }
 }
 
-function resetBtn() {
-    const btn = document.getElementById('btnRegistrar');
-    btn.disabled = false;
-    btn.querySelector('.txt-btn').style.display = 'inline';
-    btn.querySelector('.loader').style.display = 'none';
+// ======================================
+// MÁSCARAS E INTERFACES NAVEGACIONAIS
+// ======================================
+function syncDate(valorISO, inputId) {
+    if (!valorISO) return;
+    const [ano, mes, dia] = valorISO.split('-');
+    document.getElementById(inputId).value = `${dia}/${mes}/${ano}`;
+    if (inputId === 'filtroDataAdmin') renderAdmin();
 }
 
-function renderAdmin() {
-    const f = document.getElementById('filtroDataAdmin').value;
-    const busca = f ? new Date(f + "T00:00:00").toLocaleDateString('pt-BR') : getHojeBR();
-    const pts = dbPontos.filter(p => new Date(p.Data).toLocaleDateString('pt-BR') === busca);
-    document.getElementById('tabStatus').innerHTML = pts.map(p => `
-        <tr><td>${p.Nome}</td><td>${p.Entrada}</td><td>${p.Intervalo}</td><td>${p.Volta}</td><td>${p.Saída}</td></tr>
-    `).join('') || '<tr><td colspan="5" class="text-center">Nenhum registro</td></tr>';
+function mascaraData(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    input.value = v;
+}
+
+function mascaraCPF(e) {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
+}
+
+function abrirModalCad() {
+    document.getElementById('cadNome').value = "";
+    document.getElementById('cadCPF').value = "";
+    document.getElementById('cadData').value = document.getElementById('filtroDataAdmin').value;
+    new bootstrap.Modal(document.getElementById('modalCad')).show();
+}
+
+function verificarCPFAdmin() {
+    const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
+    if (cpf === "00000000000") new bootstrap.Modal(document.getElementById('modalSenha')).show();
+    else alert("Registrando ponto do colaborador no sistema...");
+}
+
+function validarSenha() {
+    if (document.getElementById('adminPass').value === "1234") {
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+        document.getElementById('screenPonto').classList.remove('active');
+        document.getElementById('screenAdmin').classList.add('active');
+        document.getElementById('btnSairHeader').style.display = 'block';
+    } else { alert("Senha incorreta!"); }
+}
+
+function sairAdmin() {
+    document.getElementById('screenAdmin').classList.remove('active');
+    document.getElementById('screenPonto').classList.add('active');
+    document.getElementById('btnSairHeader').style.display = 'none';
+    document.getElementById('cpfIn').value = "";
 }
 </script>
 </body>
