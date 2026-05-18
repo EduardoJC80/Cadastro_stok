@@ -355,238 +355,177 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-
 // ======================================
-// CONFIGURAÇÕES - INSIRA SUA URL AQUI
+// CONFIGURAÇÃO
 // ======================================
-const API_URL = "https://script.google.com/macros/s/AKfycbyP416h4tDkV_dHUJ1njSXgVpwPxfUnJ7m12GOzIVcXAbO0lvhLsq0U2tcCKLiASwhVWw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxHFR21FX_XjnH-C7vuH9LBpqF7tD1lypkRme4AQNbhVAi9UO4KjWmbqd10MFJ8nkdnmA/exec";
 
 let dbEscalas = [];
 let dbPontos = [];
 
-// ======================================
-// INICIALIZAÇÃO AO CARREGAR A PÁGINA
-// ======================================
+const getHojeBR = () => new Date().toLocaleDateString('pt-BR');
+
+// Converte "08:00" -> 480
+const hParaMin = (h) => {
+    if (!h || h === "--:--" || typeof h !== 'string') return 0;
+    const [hrs, min] = h.split(':').map(Number);
+    return (hrs * 60) + min;
+};
+
+// Padroniza datas de qualquer formato para DD/MM/AAAA
+const formatarData = (d) => {
+    if(!d) return "";
+    const dataObj = new Date(d);
+    return !isNaN(dataObj) ? dataObj.toLocaleDateString('pt-BR') : String(d).trim();
+};
+
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
-    // Define a data de hoje no campo de busca (17/05/2026)
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    document.getElementById('filtroDataAdmin').value = hoje;
+    // Inicia filtro com data de hoje (formato para input date)
+    const f = document.getElementById('filtroDataAdmin');
+    f.value = new Date().toISOString().split('T')[0];
+    f.addEventListener('change', renderAdmin);
 
-    // Configuração de Eventos e Máscaras
-    document.getElementById('cpfIn').addEventListener('input', mascaraCPF);
-    document.getElementById('cadCPF').addEventListener('input', mascaraCPF);
-    
-    document.getElementById('filtroDataAdmin').addEventListener('input', (e) => {
-        mascaraData(e.target);
-        if(e.target.value.length === 10) renderAdmin();
-    });
-    
-    document.getElementById('cadData').addEventListener('input', (e) => mascaraData(e.target));
-
-    // Carregamento Inicial dos Dados
+    configurarCPF();
     carregarDados();
 };
 
 function atualizarRelogio() {
     const agora = new Date();
-    document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
-    document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {
-        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    document.getElementById('relogio').innerText = agora.toLocaleTimeString('pt-BR');
+    document.getElementById('dataAtual').innerText = agora.toLocaleDateString('pt-BR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 }
 
-// ======================================
-// LEITURA DE DADOS (MÉTODO TEXTO PURO - ANTI-CORS)
-// ======================================
-function carregarDados() {
-    console.log("Conectando à API via canal seguro...");
-
-    // Remove scripts antigos da mesma requisição para limpar o HTML
-    const scriptsAntigos = document.querySelectorAll('.jsonp-script');
-    scriptsAntigos.forEach(s => s.remove());
-
-    // Injeta script dinâmico para carregar as Escalas sem dar erro de CORS
-    const scriptE = document.createElement('script');
-    scriptE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${new Date().getTime()}`;
-    scriptE.className = 'jsonp-script';
-    document.body.appendChild(scriptE);
-
-    // Injeta script dinâmico para carregar os Pontos sem dar erro de CORS
-    const scriptP = document.createElement('script');
-    scriptP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${new Date().getTime()}`;
-    scriptP.className = 'jsonp-script';
-    document.body.appendChild(scriptP);
+function configurarCPF() {
+    const el = document.getElementById('cpfIn');
+    el.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, "");
+        v = v.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        e.target.value = v.substring(0, 14);
+    });
 }
 
-// Funções globais que recebem as respostas diretas do Google Apps Script
-function retornoEscalas(dados) {
-    console.log("Dados de Escalas recebidos:", dados);
-    dbEscalas = dados.map((item, i) => ({
-        ...item,
-        _index: i + 2,
-        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
-    }));
-    renderAdmin();
+function verTela(id) {
+    document.querySelectorAll('.tela-secao').forEach(t => t.style.display = 'none');
+    document.getElementById(id).style.display = 'block';
+    if(id === 'telaAdmin') renderAdmin();
 }
 
-function retornoPontos(dados) {
-    console.log("Dados de Pontos recebidos:", dados);
-    dbPontos = dados.map((item, i) => ({
-        ...item,
-        _index: i + 2,
-        Data: String(item.Data || "").trim() // Mantém exatamente o texto do banco, sem alterar nada
-    }));
-    renderAdmin();
+async function carregarDados() {
+    try {
+        const [resE, resP] = await Promise.all([
+            fetch(API_URL + "?tipo=escalas"),
+            fetch(API_URL + "?tipo=ponto")
+        ]);
+        dbEscalas = await resE.json();
+        dbPontos = await resP.json();
+        renderAdmin();
+    } catch (e) { console.error("Erro de conexão."); }
 }
 
 // ======================================
-// RENDERIZAÇÃO DAS TABELAS
+// LÓGICA DO PONTO
 // ======================================
-function renderAdmin() {
-    const filtro = document.getElementById('filtroDataAdmin').value.trim();
-    console.log("Filtrando para a data:", filtro);
-    
-    const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const ptsDia = dbPontos.filter(p => p.Data === filtro);
+async function processarPonto() {
+    const cpf = document.getElementById('cpfIn').value;
+    if (cpf.length < 14) return alert("CPF Inválido.");
 
-    // Atualiza Painel Numérico Superior
-    document.getElementById('countEscalados').innerText = escDia.length;
-    document.getElementById('countPresentes').innerText = ptsDia.length;
-    document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
+    const hoje = getHojeBR();
+    const agora = new Date();
+    const agoraStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const agoraMin = hParaMin(agoraStr);
 
-    // Tabela Escalas do Dia
-    const tabEsc = document.getElementById('tabEscalados');
-    if (escDia.length > 0) {
-        tabEsc.innerHTML = escDia.map(e => `
-            <tr>
-                <td class="text-start ps-4"><b>${e.Nome}</b><br><small>${e.CPF}</small></td>
-                <td>${e.Hora}</td>
-                <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
-            </tr>`).join('');
-    } else {
-        tabEsc.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-secondary">Nenhuma escala para este dia.</td></tr>';
-    }
+    const escala = dbEscalas.find(e => e.CPF === cpf && formatarData(e.Data) === hoje);
+    if (!escala) return alert("Você não está escalado para hoje.");
 
-    // Tabela Registros de Ponto
-    const tabPts = document.getElementById('tabStatus');
-    if (ptsDia.length > 0) {
-        tabPts.innerHTML = ptsDia.map(p => `
-            <tr>
-                <td class="text-start ps-4"><b>${p.Nome}</b></td>
-                <td>${p.Entrada || '--:--'}</td>
-                <td>${p.Intervalo || '--:--'}</td>
-                <td>${p.Volta || '--:--'}</td>
-                <td>${p.Saída || '--:--'}</td>
-                <td><i class="bi bi-pencil text-primary" style="cursor:pointer"></i></td>
-            </tr>`).join('');
-    } else {
-        tabPts.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum ponto registrado.</td></tr>';
-    }
+    let ponto = dbPontos.find(p => p.CPF === cpf && formatarData(p.Data) === hoje);
+    let acao = "";
+    let statusRelativo = "";
+
+    // 1. ENTRADA (Tolerância 5 min)
+    if (!ponto) {
+        const minEscala = hParaMin(escala.Hora);
+        const diff = agoraMin - minEscala;
+        
+        if (diff > 5) statusRelativo = `ATRASO (${diff} min)`;
+        else if (diff < -5) statusRelativo = `ANTECIPADO (${Math.abs(diff)} min)`;
+        else statusRelativo = "NO HORÁRIO";
+
+        ponto = { Nome: escala.Nome, CPF: cpf, Data: hoje, Entrada: agoraStr, Intervalo: "--:--", Volta: "--:--", Saída: "--:--", _index: null };
+        acao = `ENTRADA • ${statusRelativo}`;
+    } 
+    // 2. INTERVALO (Trava 45 min)
+    else if (ponto.Intervalo === "--:--") {
+        const diff = agoraMin - hParaMin(ponto.Entrada);
+        if (diff < 45) return alert(`Aguarde ${45 - diff} min para sair para o intervalo.`);
+        ponto.Intervalo = agoraStr;
+        acao = "SAÍDA INTERVALO";
+    } 
+    // 3. VOLTA (Trava 40 min)
+    else if (ponto.Volta === "--:--") {
+        const diff = agoraMin - hParaMin(ponto.Intervalo);
+        if (diff < 40) return alert(`Aguarde ${40 - diff} min para voltar do intervalo.`);
+        ponto.Volta = agoraStr;
+        acao = "VOLTA INTERVALO";
+    } 
+    // 4. SAÍDA FINAL
+    else if (ponto.Saída === "--:--") {
+        ponto.Saída = agoraStr;
+        acao = "SAÍDA FINAL";
+    } 
+    else { return alert("Ponto já finalizado hoje."); }
+
+    enviar(ponto, acao);
 }
 
-// ======================================
-// ENVIO DE DADOS (SALVAR E EXCLUIR VIA POST)
-// ======================================
-async function salvarEscala() {
-    const btn = document.getElementById('btnSalvarEscala');
-    const dados = {
-        Nome: document.getElementById('cadNome').value,
-        CPF: document.getElementById('cadCPF').value,
-        Data: document.getElementById('cadData').value,
-        Hora: document.getElementById('cadHora').value
-    };
-
-    if (!dados.Nome || dados.Data.length < 10) return alert("Preencha Nome e Data corretamente.");
-
-    btn.disabled = true;
-    btn.innerText = "SALVANDO...";
-
+async function enviar(ponto, acao) {
     try {
         await fetch(API_URL, {
             method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "salvarEscala", data: dados })
+            body: JSON.stringify({
+                acao: ponto._index ? "editarLinhaPonto" : "salvarPonto",
+                index: ponto._index,
+                data: ponto
+            })
         });
+
+        document.getElementById('confNome').innerText = ponto.Nome;
+        document.getElementById('confTipo').innerText = acao;
+        document.getElementById('confHora').innerText = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
         
-        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        setTimeout(carregarDados, 1500);
-    } catch (e) {
-        console.error("Erro no envio:", e);
-        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        setTimeout(carregarDados, 1500);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "SALVAR ESCALA";
+        new bootstrap.Modal(document.getElementById('modalConfirmPonto')).show();
+        document.getElementById('cpfIn').value = "";
+        carregarDados();
+    } catch (e) { alert("Erro ao salvar."); }
+}
+
+function renderAdmin() {
+    const fVal = document.getElementById('filtroDataAdmin').value;
+    let dataBusca = getHojeBR();
+    if(fVal) {
+        const [a, m, d] = fVal.split('-');
+        dataBusca = `${d}/${m}/${a}`;
     }
-}
 
-async function deletarEscala(idx) {
-    if (!confirm("Excluir esta escala?")) return;
-    try {
-        await fetch(API_URL, { 
-            method: "POST", 
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "deletarEscala", index: idx }) 
-        });
-        setTimeout(carregarDados, 1200);
-    } catch(e) {
-        setTimeout(carregarDados, 1200);
-    }
-}
+    const pts = dbPontos.filter(p => formatarData(p.Data) === dataBusca);
+    const esc = dbEscalas.filter(e => formatarData(e.Data) === dataBusca);
 
-// ======================================
-// MÁSCARAS E INTERFACES NAVEGACIONAIS
-// ======================================
-function syncDate(valorISO, inputId) {
-    if (!valorISO) return;
-    const [ano, mes, dia] = valorISO.split('-');
-    document.getElementById(inputId).value = `${dia}/${mes}/${ano}`;
-    if (inputId === 'filtroDataAdmin') renderAdmin();
-}
+    document.getElementById('countEscalados').innerText = esc.length;
+    document.getElementById('countPresentes').innerText = pts.length;
 
-function mascaraData(input) {
-    let v = input.value.replace(/\D/g, '').slice(0, 8);
-    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
-    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
-    input.value = v;
-}
-
-function mascaraCPF(e) {
-    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    e.target.value = v;
-}
-
-function abrirModalCad() {
-    document.getElementById('cadNome').value = "";
-    document.getElementById('cadCPF').value = "";
-    document.getElementById('cadData').value = document.getElementById('filtroDataAdmin').value;
-    new bootstrap.Modal(document.getElementById('modalCad')).show();
-}
-
-function verificarCPFAdmin() {
-    const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
-    if (cpf === "00000000000") new bootstrap.Modal(document.getElementById('modalSenha')).show();
-    else alert("Registrando ponto do colaborador no sistema...");
-}
-
-function validarSenha() {
-    if (document.getElementById('adminPass').value === "1234") {
-        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
-        document.getElementById('screenPonto').classList.remove('active');
-        document.getElementById('screenAdmin').classList.add('active');
-        document.getElementById('btnSairHeader').style.display = 'block';
-    } else { alert("Senha incorreta!"); }
-}
-
-function sairAdmin() {
-    document.getElementById('screenAdmin').classList.remove('active');
-    document.getElementById('screenPonto').classList.add('active');
-    document.getElementById('btnSairHeader').style.display = 'none';
-    document.getElementById('cpfIn').value = "";
+    document.getElementById('tabStatus').innerHTML = pts.map(p => `
+        <tr>
+            <td class="ps-4"><strong>${p.Nome}</strong><br><small class="text-muted">${p.CPF}</small></td>
+            <td><span class="badge bg-light text-dark">${p.Entrada}</span></td>
+            <td><span class="badge bg-light text-dark">${p.Intervalo}</span></td>
+            <td><span class="badge bg-light text-dark">${p.Volta}</span></td>
+            <td><span class="badge bg-light text-dark">${p.Saída}</span></td>
+        </tr>
+    `).join('') || '<tr><td colspan="5" class="text-center p-4 text-muted">Nenhum registro encontrado</td></tr>';
 }
 </script>
 </body>
