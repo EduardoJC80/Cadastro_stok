@@ -356,48 +356,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ======================================
-// CONFIGURAÇÃO
+// CONFIGURAÇÃO (URL DA SUA API)
 // ======================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxHFR21FX_XjnH-C7vuH9LBpqF7tD1lypkRme4AQNbhVAi9UO4KjWmbqd10MFJ8nkdnmA/exec";
 
 let dbEscalas = [];
 let dbPontos = [];
 
+// Auxiliares
 const getHojeBR = () => new Date().toLocaleDateString('pt-BR');
-
-// Converte "08:00" -> 480
 const hParaMin = (h) => {
-    if (!h || h === "--:--" || typeof h !== 'string') return 0;
+    if (!h || h === "--:--") return 0;
     const [hrs, min] = h.split(':').map(Number);
     return (hrs * 60) + min;
 };
 
-// Padroniza datas de qualquer formato para DD/MM/AAAA
-const formatarData = (d) => {
-    if(!d) return "";
-    const dataObj = new Date(d);
-    return !isNaN(dataObj) ? dataObj.toLocaleDateString('pt-BR') : String(d).trim();
-};
-
+// Inicialização
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
-    
-    // Inicia filtro com data de hoje (formato para input date)
-    const f = document.getElementById('filtroDataAdmin');
-    f.value = new Date().toISOString().split('T')[0];
-    f.addEventListener('change', renderAdmin);
-
     configurarCPF();
     carregarDados();
+    document.getElementById('filtroDataAdmin').value = new Date().toISOString().split('T')[0];
 };
 
 function atualizarRelogio() {
     const agora = new Date();
     document.getElementById('relogio').innerText = agora.toLocaleTimeString('pt-BR');
-    document.getElementById('dataAtual').innerText = agora.toLocaleDateString('pt-BR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    });
+    document.getElementById('dataAtual').innerText = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 function configurarCPF() {
@@ -423,109 +409,95 @@ async function carregarDados() {
         ]);
         dbEscalas = await resE.json();
         dbPontos = await resP.json();
-        renderAdmin();
-    } catch (e) { console.error("Erro de conexão."); }
+    } catch (e) { console.error("Erro ao carregar dados do banco."); }
 }
 
-// ======================================
-// LÓGICA DO PONTO
-// ======================================
+// LÓGICA DE REGISTRO
 async function processarPonto() {
     const cpf = document.getElementById('cpfIn').value;
-    if (cpf.length < 14) return alert("CPF Inválido.");
+    const btn = document.getElementById('btnRegistrar');
+    if (cpf.length < 14) return alert("CPF incompleto.");
+
+    // Trava do botão
+    btn.disabled = true;
+    btn.querySelector('.txt-btn').style.display = 'none';
+    btn.querySelector('.loader').style.display = 'inline-block';
 
     const hoje = getHojeBR();
     const agora = new Date();
     const agoraStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const agoraMin = hParaMin(agoraStr);
 
-    const escala = dbEscalas.find(e => e.CPF === cpf && formatarData(e.Data) === hoje);
-    if (!escala) return alert("Você não está escalado para hoje.");
+    const escala = dbEscalas.find(e => e.CPF === cpf && new Date(e.Data).toLocaleDateString('pt-BR') === hoje);
+    
+    if (!escala) {
+        exibirFeedback("ERRO", "Você não está escalado para hoje.", "---", "text-danger", "bi-x-circle-fill");
+        resetBtn();
+        return;
+    }
 
-    let ponto = dbPontos.find(p => p.CPF === cpf && formatarData(p.Data) === hoje);
+    let ponto = dbPontos.find(p => p.CPF === cpf && new Date(p.Data).toLocaleDateString('pt-BR') === hoje);
     let acao = "";
-    let statusRelativo = "";
+    let statusTexto = "";
 
-    // 1. ENTRADA (Tolerância 5 min)
+    // Lógica de Batidas e Travas
     if (!ponto) {
-        const minEscala = hParaMin(escala.Hora);
-        const diff = agoraMin - minEscala;
-        
-        if (diff > 5) statusRelativo = `ATRASO (${diff} min)`;
-        else if (diff < -5) statusRelativo = `ANTECIPADO (${Math.abs(diff)} min)`;
-        else statusRelativo = "NO HORÁRIO";
-
+        const diff = agoraMin - hParaMin(escala.Hora);
+        statusTexto = diff > 5 ? `ATRASADO ${diff} min` : (diff < -5 ? `ANTECIPADO ${Math.abs(diff)} min` : "NO HORÁRIO");
         ponto = { Nome: escala.Nome, CPF: cpf, Data: hoje, Entrada: agoraStr, Intervalo: "--:--", Volta: "--:--", Saída: "--:--", _index: null };
-        acao = `ENTRADA • ${statusRelativo}`;
-    } 
-    // 2. INTERVALO (Trava 45 min)
-    else if (ponto.Intervalo === "--:--") {
-        const diff = agoraMin - hParaMin(ponto.Entrada);
-        if (diff < 45) return alert(`Aguarde ${45 - diff} min para sair para o intervalo.`);
-        ponto.Intervalo = agoraStr;
-        acao = "SAÍDA INTERVALO";
-    } 
-    // 3. VOLTA (Trava 40 min)
-    else if (ponto.Volta === "--:--") {
-        const diff = agoraMin - hParaMin(ponto.Intervalo);
-        if (diff < 40) return alert(`Aguarde ${40 - diff} min para voltar do intervalo.`);
-        ponto.Volta = agoraStr;
-        acao = "VOLTA INTERVALO";
-    } 
-    // 4. SAÍDA FINAL
-    else if (ponto.Saída === "--:--") {
-        ponto.Saída = agoraStr;
-        acao = "SAÍDA FINAL";
-    } 
-    else { return alert("Ponto já finalizado hoje."); }
+        acao = "ENTRADA";
+    } else if (ponto.Intervalo === "--:--") {
+        if (agoraMin - hParaMin(ponto.Entrada) < 45) return alert("Aguarde 45min após a entrada.");
+        ponto.Intervalo = agoraStr; acao = "SAÍDA INTERVALO";
+    } else if (ponto.Volta === "--:--") {
+        if (agoraMin - hParaMin(ponto.Intervalo) < 40) return alert("Aguarde 40min de intervalo.");
+        ponto.Volta = agoraStr; acao = "VOLTA INTERVALO";
+    } else if (ponto.Saída === "--:--") {
+        ponto.Saída = agoraStr; acao = "SAÍDA FINAL";
+    } else {
+        exibirFeedback("AVISO", "Ponto já finalizado hoje.", "---", "text-warning", "bi-exclamation-triangle-fill");
+        resetBtn();
+        return;
+    }
 
-    enviar(ponto, acao);
+    try {
+        const res = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ acao: ponto._index ? "editarLinhaPonto" : "salvarPonto", index: ponto._index, data: ponto })
+        });
+        
+        exibirFeedback(ponto.Nome, acao, statusTexto || agoraStr, "text-success", "bi-check-circle-fill");
+        document.getElementById('cpfIn').value = "";
+        await carregarDados();
+    } catch (e) {
+        exibirFeedback("ERRO", "Falha ao conectar com o banco.", "---", "text-danger", "bi-cloud-slash");
+    } finally {
+        resetBtn();
+    }
 }
 
-async function enviar(ponto, acao) {
-    try {
-        await fetch(API_URL, {
-            method: "POST",
-            body: JSON.stringify({
-                acao: ponto._index ? "editarLinhaPonto" : "salvarPonto",
-                index: ponto._index,
-                data: ponto
-            })
-        });
+function exibirFeedback(titulo, subtitulo, hora, corClasse, icone) {
+    document.getElementById('msgTitulo').innerText = titulo;
+    document.getElementById('msgSubtitulo').innerText = subtitulo;
+    document.getElementById('msgHora').innerText = hora;
+    document.getElementById('iconFeedback').innerHTML = `<i class="bi ${icone} ${corClasse}" style="font-size: 4rem;"></i>`;
+    new bootstrap.Modal(document.getElementById('modalFeedback')).show();
+}
 
-        document.getElementById('confNome').innerText = ponto.Nome;
-        document.getElementById('confTipo').innerText = acao;
-        document.getElementById('confHora').innerText = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        
-        new bootstrap.Modal(document.getElementById('modalConfirmPonto')).show();
-        document.getElementById('cpfIn').value = "";
-        carregarDados();
-    } catch (e) { alert("Erro ao salvar."); }
+function resetBtn() {
+    const btn = document.getElementById('btnRegistrar');
+    btn.disabled = false;
+    btn.querySelector('.txt-btn').style.display = 'inline';
+    btn.querySelector('.loader').style.display = 'none';
 }
 
 function renderAdmin() {
-    const fVal = document.getElementById('filtroDataAdmin').value;
-    let dataBusca = getHojeBR();
-    if(fVal) {
-        const [a, m, d] = fVal.split('-');
-        dataBusca = `${d}/${m}/${a}`;
-    }
-
-    const pts = dbPontos.filter(p => formatarData(p.Data) === dataBusca);
-    const esc = dbEscalas.filter(e => formatarData(e.Data) === dataBusca);
-
-    document.getElementById('countEscalados').innerText = esc.length;
-    document.getElementById('countPresentes').innerText = pts.length;
-
+    const f = document.getElementById('filtroDataAdmin').value;
+    const busca = f ? new Date(f + "T00:00:00").toLocaleDateString('pt-BR') : getHojeBR();
+    const pts = dbPontos.filter(p => new Date(p.Data).toLocaleDateString('pt-BR') === busca);
     document.getElementById('tabStatus').innerHTML = pts.map(p => `
-        <tr>
-            <td class="ps-4"><strong>${p.Nome}</strong><br><small class="text-muted">${p.CPF}</small></td>
-            <td><span class="badge bg-light text-dark">${p.Entrada}</span></td>
-            <td><span class="badge bg-light text-dark">${p.Intervalo}</span></td>
-            <td><span class="badge bg-light text-dark">${p.Volta}</span></td>
-            <td><span class="badge bg-light text-dark">${p.Saída}</span></td>
-        </tr>
-    `).join('') || '<tr><td colspan="5" class="text-center p-4 text-muted">Nenhum registro encontrado</td></tr>';
+        <tr><td>${p.Nome}</td><td>${p.Entrada}</td><td>${p.Intervalo}</td><td>${p.Volta}</td><td>${p.Saída}</td></tr>
+    `).join('') || '<tr><td colspan="5" class="text-center">Nenhum registro</td></tr>';
 }
 </script>
 </body>
