@@ -369,81 +369,90 @@ window.onload = () => {
 
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
         mascaraCPF(e);
-        if(e.target.value.length === 14) verificarCPFAdmin();
+        // Dispara o registro automático assim que o CPF estiver completo
+        if(e.target.value.length === 14) verificarEGravarPonto();
     });
     
     carregarDados();
+    setInterval(renderAdmin, 60000);
 };
 
-// --- FUNÇÃO DE ENVIO REFORMULADA ---
-async function enviarPonto(cpf, nome, data, hora, tipo) {
-    // Exibe um feedback visual de carregamento (opcional)
-    console.log("Tentando gravar:", {cpf, nome, data, hora, tipo});
-
+// --- FUNÇÃO DE GRAVAÇÃO DIRETA NO BANCO ---
+async function enviarPonto(payload) {
     try {
-        // Para Google Apps Script, as vezes o envio via URLSearchParams é mais estável
-        const params = new URLSearchParams();
-        params.append('acao', 'registrarPonto');
-        params.append('data', JSON.stringify({ CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo }));
-
-        const response = await fetch(API_URL, {
+        // Usamos o fetch enviando a string JSON diretamente
+        await fetch(API_URL, {
             method: "POST",
-            mode: "no-cors", // Mantido no-cors para evitar erro de redirecionamento do Google
-            body: params
+            mode: "no-cors", // Necessário para evitar bloqueio de redirecionamento do Google
+            headers: { "Content-Type": "text/plain" }, // Evita pre-flight OPTIONS
+            body: JSON.stringify(payload)
         });
 
-        // Como o no-cors não permite ler a resposta, assumimos sucesso se não cair no catch
-        exibirAlerta("Ponto Batido!", `${tipo} registrada para ${nome} às ${hora}`, "sucesso");
+        exibirAlerta("Sucesso!", `${payload.data.Tipo} registrada para ${payload.data.Nome}`, "sucesso");
         document.getElementById('cpfIn').value = "";
         
-        // Aguarda um pouco para o Google processar antes de recarregar
+        // Recarrega os dados após 2 segundos para dar tempo ao Google de processar
         setTimeout(carregarDados, 2000); 
 
     } catch (e) {
-        console.error("Erro no fetch:", e);
-        exibirAlerta("Erro de Conexão", "Não foi possível alcançar o servidor.", "erro");
+        exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
     }
 }
 
-async function verificarCPFAdmin() {
+async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
     const hoje = new Date().toLocaleDateString('pt-BR');
 
+    // Atalho para Painel Admin
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const mSenha = document.getElementById('modalSenha');
         if(mSenha) new bootstrap.Modal(mSenha).show();
-        return;
-    }
-
-    const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
-    
-    if (!colab) {
-        exibirAlerta("Não Autorizado", "CPF não está na escala de hoje.", "erro");
         input.value = "";
         return;
     }
 
+    // Validação na Escala
+    const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
+    if (!colab) {
+        exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
+        input.value = "";
+        return;
+    }
+
+    // Define o tipo de batida (Entrada, Intervalo, etc)
     const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
     let tipo = "Entrada";
-    
     if (registro) {
         if (!registro.Entrada) tipo = "Entrada";
         else if (!registro.Intervalo) tipo = "Intervalo";
         else if (!registro.Volta) tipo = "Volta";
         else if (!registro.Saída) tipo = "Saída";
         else { 
-            exibirAlerta("Atenção", "Todos os pontos de hoje já foram registrados.", "info"); 
+            exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
             input.value = "";
             return; 
         }
     }
 
     const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-    await enviarPonto(cpf, colab.Nome, hoje, horaAtual, tipo);
+    
+    // OBJETO EXATAMENTE COMO O SEU APP SCRIPT ESPERA (doPost)
+    const payload = {
+        acao: "registrarPonto",
+        data: {
+            Nome: colab.Nome,
+            CPF: cpf,
+            Data: hoje,
+            Hora: horaAtual,
+            Tipo: tipo
+        }
+    };
+
+    await enviarPonto(payload);
 }
 
-// --- RESTANTE DAS FUNÇÕES (CARREGAMENTO E INTERFACE) ---
+// --- RESTANTE DAS FUNÇÕES DE APOIO (MODAIS E UI) ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -461,9 +470,8 @@ function retornoEscalas(dados) { dbEscalas = dados.map((item, i) => ({ ...item, 
 function retornoPontos(dados) { dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
 
 function renderAdmin() {
-    const filtroInput = document.getElementById('filtroDataAdmin');
-    if(!filtroInput) return;
-    const filtro = filtroInput.value;
+    const filtro = document.getElementById('filtroDataAdmin')?.value;
+    if(!filtro) return;
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
@@ -473,7 +481,8 @@ function renderAdmin() {
 
     const faltasEfetivas = escDia.filter(e => {
         if (cpfsPresentes.includes(e.CPF)) return false;
-        return (minutosAgora > (hhmmToMinutes(e.Hora) + 10));
+        const [h, m] = e.Hora.split(':').map(Number);
+        return (minutosAgora > (h * 60 + m + 10)); // Regra dos 10 min
     });
 
     if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
@@ -482,23 +491,23 @@ function renderAdmin() {
 
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr><td><strong>${e.Nome}</strong></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" onclick="deletarEscala(${e._index})"></i></td></tr>
-    `).join('') || '<tr><td colspan="3">Vazio</td></tr>';
+    `).join('') || '<tr><td colspan="3">Nenhuma escala.</td></tr>';
 
     document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
         <tr><td><strong>${p.Nome}</strong></td><td>${p.Entrada||'--'}</td><td>${p.Intervalo||'--'}</td><td>${p.Volta||'--'}</td><td>${p.Saída||'--'}</td></tr>
-    `).join('') || '<tr><td colspan="5">Vazio</td></tr>';
+    `).join('') || '<tr><td colspan="5">Nenhum registro.</td></tr>';
 }
 
 function criarModalAlertaDinamico() {
     if (document.getElementById('modalAlertaDinamico')) return;
     const html = `<div class="modal fade" id="modalAlertaDinamico" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
                 <div class="modal-body text-center p-4">
-                    <div id="dynAlertaIcone" class="mb-3" style="font-size: 3.5rem;"></div>
+                    <div id="dynAlertaIcone" class="mb-3" style="font-size: 3rem;"></div>
                     <h5 id="dynAlertaTitulo" class="fw-bold mb-2"></h5>
                     <p id="dynAlertaMensagem" class="text-muted mb-4"></p>
-                    <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 12px;">OK</button>
+                    <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 10px;">Fechar</button>
                 </div>
             </div>
         </div>
@@ -514,12 +523,6 @@ function exibirAlerta(titulo, msg, tipo) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAlertaDinamico')).show();
 }
 
-function hhmmToMinutes(str) {
-    if (!str || !str.includes(':')) return 0;
-    const [h, m] = str.split(':').map(Number);
-    return (h * 60) + m;
-}
-
 function mascaraCPF(e) {
     let v = e.target.value.replace(/\D/g, '').slice(0, 11);
     v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
@@ -527,8 +530,42 @@ function mascaraCPF(e) {
 }
 
 function atualizarRelogio() {
-    const agora = new Date();
-    if(document.getElementById('clock')) document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
+    const clock = document.getElementById('clock');
+    if(clock) clock.innerText = new Date().toLocaleTimeString('pt-BR');
+}
+
+// Funções Admin
+async function salvarEscala(btn) {
+    const d = {
+        Nome: document.getElementById('cadNome').value,
+        CPF: document.getElementById('cadCPF').value,
+        Data: document.getElementById('cadData').value,
+        Hora: document.getElementById('cadHora').value
+    };
+    if(!d.Nome || d.CPF.length < 14) return exibirAlerta("Erro", "Preencha tudo.", "erro");
+    btn.disabled = true;
+    await enviarPonto({ acao: "salvarEscala", data: d });
+    bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+    btn.disabled = false;
+}
+
+async function deletarEscala(index) {
+    if(confirm("Excluir?")) await enviarPonto({ acao: "deletarEscala", index: index });
+}
+
+function validarSenha() {
+    if (document.getElementById('adminPass').value === "1234") {
+        document.getElementById('screenPonto').classList.remove('active');
+        document.getElementById('screenAdmin').classList.add('active');
+        document.getElementById('btnSairHeader').style.display = 'block';
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+    } else { exibirAlerta("Erro", "Senha incorreta", "erro"); }
+}
+
+function sairAdmin() {
+    document.getElementById('screenAdmin').classList.remove('active');
+    document.getElementById('screenPonto').classList.add('active');
+    document.getElementById('btnSairHeader').style.display = 'none';
 }
 </script>
 </body>
