@@ -356,88 +356,107 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ======================================
-// CONFIGURAÇÕES
+// CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ======================================
 const API_URL = "https://script.google.com/macros/s/AKfycbx7B-h_PORqhcwEo4Fv-Wof0LSSKrBeCFjwTVTYxKJqYEXC2QvMg0G3I0LNJCqTYa6XnA/exec";
 
 let dbEscalas = [];
 let dbPontos = [];
 
+// Inicialização ao carregar a página
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
+    // Define a data de hoje no filtro
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const filtroData = document.getElementById('filtroDataAdmin');
-    if(filtroData) filtroData.value = hoje;
+    const filtro = document.getElementById('filtroDataAdmin');
+    if(filtro) filtro.value = hoje;
 
-    // Máscaras
-    const cpfIn = document.getElementById('cpfIn');
-    const cadCPF = document.getElementById('cadCPF');
-    if(cpfIn) cpfIn.addEventListener('input', mascaraCPF);
-    if(cadCPF) cadCPF.addEventListener('input', mascaraCPF);
+    // Configura máscaras de entrada
+    document.getElementById('cpfIn')?.addEventListener('input', mascaraCPF);
+    document.getElementById('cadCPF')?.addEventListener('input', mascaraCPF);
+    
+    // Listener para o filtro de data (atualiza tabela ao digitar data completa)
+    document.getElementById('filtroDataAdmin')?.addEventListener('input', (e) => {
+        formatarData(e.target);
+        if(e.target.value.length === 10) renderAdmin();
+    });
 
     carregarDados();
 };
 
+// ======================================
+// FUNÇÕES DE INTERFACE (MODAIS E RELÓGIO)
+// ======================================
 function atualizarRelogio() {
+    const agora = new Date();
     const clock = document.getElementById('clock');
     const dateFull = document.getElementById('date-full');
-    const agora = new Date();
     if(clock) clock.innerText = agora.toLocaleTimeString('pt-BR');
     if(dateFull) dateFull.innerText = agora.toLocaleDateString('pt-BR', {
         weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
     });
 }
 
-// --- UTILITÁRIOS ---
-function hhmmToMinutes(str) {
-    if (!str || !str.includes(':')) return 0;
-    const [h, m] = str.split(':').map(Number);
-    return (h * 60) + m;
-}
-
-// ======================================
-// ABRIR MODAL (CORRIGIDO)
-// ======================================
+// Abre o modal de cadastro limpando os campos
 function abrirModalCad() {
     const modalEl = document.getElementById('modalCad');
-    if (modalEl) {
-        const inputData = document.getElementById('cadData');
-        const filtroData = document.getElementById('filtroDataAdmin');
-        if (inputData && filtroData) inputData.value = filtroData.value;
-        
-        const myModal = new bootstrap.Modal(modalEl);
-        myModal.show();
-    } else {
-        console.error("Erro: Modal com ID 'modalCad' não encontrado no HTML.");
+    if (!modalEl) return console.error("Modal modalCad não encontrado");
+
+    // Limpa campos para nova entrada
+    document.getElementById('editEscalaIdx').value = "";
+    document.getElementById('cadNome').value = "";
+    document.getElementById('cadCPF').value = "";
+    document.getElementById('cadHora').value = "";
+    document.getElementById('modalCadTitulo').innerText = "Nova Escala";
+    
+    // Define a data do modal como a data que está no filtro atual
+    document.getElementById('cadData').value = document.getElementById('filtroDataAdmin').value;
+
+    const myModal = new bootstrap.Modal(modalEl);
+    myModal.show();
+}
+
+function abrirModalRelatorio() {
+    const modalEl = document.getElementById('modalRelatorio');
+    if (modalEl) new bootstrap.Modal(modalEl).show();
+}
+
+// Sincroniza o input date invisível com o campo de texto
+function syncDate(val, targetId) {
+    if(!val) return;
+    const partes = val.split('-');
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    const target = document.getElementById(targetId);
+    if(target) {
+        target.value = dataFormatada;
+        renderAdmin(); // Atualiza a tela ao mudar a data
     }
 }
 
 // ======================================
-// SALVAR ESCALA (SEM ERRO DE NULL)
+// LÓGICA DE SALVAMENTO (CADASTRO)
 // ======================================
 async function salvarEscala(btn) {
-    // Se o btn não vier pelo 'this', tenta buscar pelo ID, mas sem travar se não achar
+    // Captura o botão (via parâmetro 'this' ou ID) para evitar erro de 'null'
     const botao = btn || document.getElementById('btnSalvarEscala');
     
-    const cadNome = document.getElementById('cadNome');
-    const cadCPF = document.getElementById('cadCPF');
-    const cadData = document.getElementById('cadData');
-    const cadHora = document.getElementById('cadHora');
-
-    if (!cadNome || !cadCPF || !cadData || !cadHora) {
-        return alert("Erro: Campos de cadastro não encontrados no HTML.");
-    }
+    const inputNome = document.getElementById('cadNome');
+    const inputCPF = document.getElementById('cadCPF');
+    const inputData = document.getElementById('cadData');
+    const inputHora = document.getElementById('cadHora');
 
     const dados = {
-        Nome: cadNome.value.trim(),
-        CPF: cadCPF.value.trim(),
-        Data: cadData.value.trim(),
-        Hora: cadHora.value.trim()
+        Nome: inputNome.value.trim(),
+        CPF: inputCPF.value.trim(),
+        Data: inputData.value.trim(),
+        Hora: inputHora.value.trim()
     };
 
-    if (!dados.Nome || dados.CPF.length < 14) return alert("Preencha Nome e CPF.");
+    if (!dados.Nome || dados.CPF.length < 14 || !dados.Data) {
+        return alert("Por favor, preencha Nome, CPF e Data corretamente.");
+    }
 
     if (botao) {
         botao.disabled = true;
@@ -451,21 +470,16 @@ async function salvarEscala(btn) {
             body: JSON.stringify({ acao: "salvarEscala", data: dados })
         });
         
-        alert("Escala salva!");
+        alert("Escala salva com sucesso!");
         
-        // Fechar modal
+        // Fecha o modal
         const modalEl = document.getElementById('modalCad');
-        const modalInst = bootstrap.Modal.getInstance(modalEl);
-        if (modalInst) modalInst.hide();
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if(inst) inst.hide();
 
-        // Limpar campos
-        cadNome.value = "";
-        cadCPF.value = "";
-        cadHora.value = "";
-
-        setTimeout(carregarDados, 1500);
+        setTimeout(carregarDados, 1000);
     } catch (e) {
-        alert("Erro ao salvar.");
+        alert("Erro ao conectar com o servidor.");
     } finally {
         if (botao) {
             botao.disabled = false;
@@ -475,115 +489,150 @@ async function salvarEscala(btn) {
 }
 
 // ======================================
-// LÓGICA DO PONTO (MESMA LINHA)
+// PROCESSAMENTO DE PONTO
 // ======================================
-async function processarPonto() {
-    const cpfInput = document.getElementById('cpfIn');
-    const cpf = cpfInput ? cpfInput.value : "";
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    const agora = new Date();
-    const horaAtualStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const minutosAgora = hhmmToMinutes(horaAtualStr);
-
-    const escala = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
-    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
-
-    if (!escala) return alert("Não escalado para hoje.");
-
-    // Trava 45 min duplicidade
-    const ultimo = registro ? (registro.Saída || registro.Volta || registro.Intervalo || registro.Entrada) : null;
-    if (ultimo && (minutosAgora - hhmmToMinutes(ultimo) < 45)) {
-        return alert(`Aguarde 45 min. Último ponto: ${ultimo}`);
-    }
-
-    let tipo = "";
-    if (!registro || !registro.Entrada) tipo = "Entrada";
-    else if (!registro.Intervalo) tipo = "Intervalo";
-    else if (!registro.Volta) {
-        if (minutosAgora - hhmmToMinutes(registro.Intervalo) < 40) {
-            return alert("Aguarde 40 min de intervalo.");
-        }
-        tipo = "Volta";
-    } 
-    else if (!registro.Saída) tipo = "Saída";
-    else return alert("Ponto completo hoje.");
-
-    if (confirm(`Registrar ${tipo} para ${escala.Nome}?`)) {
-        await fetch(API_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: hoje, Hora: horaAtualStr, Tipo: tipo } })
-        });
-        if(cpfInput) cpfInput.value = "";
-        setTimeout(carregarDados, 1000);
+async function verificarCPFAdmin() {
+    const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
+    if (cpf === "00000000000") {
+        new bootstrap.Modal(document.getElementById('modalSenha')).show();
+    } else {
+        processarPonto(document.getElementById('cpfIn').value);
     }
 }
 
+async function processarPonto(cpf) {
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // Busca se existe escala para este CPF hoje
+    const escala = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
+    if (!escala) return alert("Colaborador não escalado para o dia de hoje.");
+
+    // Define o tipo de ponto baseado no que já foi batido
+    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
+    let tipo = "Entrada";
+    
+    if (registro) {
+        if (!registro.Entrada) tipo = "Entrada";
+        else if (!registro.Intervalo) tipo = "Intervalo";
+        else if (!registro.Volta) tipo = "Volta";
+        else if (!registro.Saída) tipo = "Saída";
+        else return alert("Todos os pontos de hoje já foram registrados.");
+    }
+
+    if(confirm(`Confirmar ${tipo} para ${escala.Nome} às ${horaAtual}?`)) {
+        await enviarPonto(cpf, escala.Nome, hoje, horaAtual, tipo);
+    }
+}
+
+async function enviarPonto(cpf, nome, data, hora, tipo) {
+    try {
+        await fetch(API_URL, {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } })
+        });
+        alert("Ponto registrado!");
+        document.getElementById('cpfIn').value = "";
+        carregarDados();
+    } catch (e) { alert("Erro ao registrar."); }
+}
+
 // ======================================
-// CARREGAMENTO E RENDERIZAÇÃO
+// ADMINISTRAÇÃO E DADOS
 // ======================================
 function carregarDados() {
-    const scripts = document.querySelectorAll('.jsonp-script');
-    scripts.forEach(s => s.remove());
+    // Limpa scripts antigos de callback
+    document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
 
     const scriptE = document.createElement('script');
     scriptE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
-    scriptE.className = 'jsonp-script';
+    scriptE.className = 'jsonp-temp';
     document.body.appendChild(scriptE);
 
     const scriptP = document.createElement('script');
     scriptP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${Date.now()}`;
-    scriptP.className = 'jsonp-script';
+    scriptP.className = 'jsonp-temp';
     document.body.appendChild(scriptP);
 }
 
-function retornoEscalas(d) { dbEscalas = d; renderAdmin(); }
-function retornoPontos(d) { dbPontos = d; renderAdmin(); }
+function retornoEscalas(dados) { 
+    dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); 
+    renderAdmin(); 
+}
+function retornoPontos(dados) { 
+    dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); 
+    renderAdmin(); 
+}
 
 function renderAdmin() {
-    const filtro = document.getElementById('filtroDataAdmin')?.value || "";
+    const filtro = document.getElementById('filtroDataAdmin').value;
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     const ptsDia = dbPontos.filter(p => p.Data === filtro);
 
-    const tabEsc = document.getElementById('tabEscalados');
-    if(tabEsc) tabEsc.innerHTML = escDia.map((e, i) => `
-        <tr>
-            <td>${e.Nome}</td>
-            <td>${e.Hora}</td>
-            <td><i class="bi bi-trash text-danger" onclick="deletarEscala(${i+2})"></i></td>
-        </tr>`).join('');
+    // Atualiza contadores
+    document.getElementById('countEscalados').innerText = escDia.length;
+    document.getElementById('countPresentes').innerText = ptsDia.length;
+    document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
 
-    const tabPts = document.getElementById('tabStatus');
-    if(tabPts) tabPts.innerHTML = ptsDia.map(p => `
+    // Tabela de Escalas
+    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr>
-            <td>${p.Nome}</td>
-            <td>${p.Entrada || '-'}</td>
-            <td>${p.Intervalo || '-'}</td>
-            <td>${p.Volta || '-'}</td>
-            <td>${p.Saída || '-'}</td>
-        </tr>`).join('');
+            <td class="colab-info"><span class="colab-name">${e.Nome}</span><span class="colab-cpf-sub">${e.CPF}</span></td>
+            <td>${e.Hora}</td>
+            <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
+        </tr>`).join('') || '<tr><td colspan="3">Nenhuma escala para esta data.</td></tr>';
+
+    // Tabela de Pontos
+    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
+        <tr>
+            <td class="colab-info"><span class="colab-name">${p.Nome}</span></td>
+            <td>${p.Entrada || '--:--'}</td>
+            <td>${p.Intervalo || '--:--'}</td>
+            <td>${p.Volta || '--:--'}</td>
+            <td>${p.Saída || '--:--'}</td>
+            <td><i class="bi bi-pencil text-primary" style="cursor:pointer"></i></td>
+        </tr>`).join('') || '<tr><td colspan="6">Nenhum ponto batido.</td></tr>';
+}
+
+async function deletarEscala(index) {
+    if(!confirm("Deseja excluir esta escala?")) return;
+    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ acao: "deletarEscala", index: index }) });
+    setTimeout(carregarDados, 1000);
+}
+
+function validarSenha() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === "1234") {
+        document.getElementById('screenPonto').classList.remove('active');
+        document.getElementById('screenAdmin').classList.add('active');
+        document.getElementById('btnSairHeader').style.display = 'block';
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+        document.getElementById('adminPass').value = "";
+    } else {
+        alert("Senha incorreta!");
+    }
+}
+
+function sairAdmin() {
+    document.getElementById('screenAdmin').classList.remove('active');
+    document.getElementById('screenPonto').classList.add('active');
+    document.getElementById('btnSairHeader').style.display = 'none';
+    document.getElementById('cpfIn').value = "";
+}
+
+// --- MÁSCARAS ---
+function formatarData(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    input.value = v;
 }
 
 function mascaraCPF(e) {
     let v = e.target.value.replace(/\D/g, '').slice(0, 11);
     v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
     e.target.value = v;
-}
-
-function verificarCPFAdmin() {
-    const cpf = document.getElementById('cpfIn')?.value.replace(/\D/g, '');
-    if (cpf === "00000000000") abrirModalSenha();
-    else processarPonto();
-}
-
-function abrirModalSenha() { new bootstrap.Modal(document.getElementById('modalSenha')).show(); }
-
-function validarSenha() {
-    if (document.getElementById('adminPass').value === "1234") {
-        document.getElementById('screenPonto').classList.remove('active');
-        document.getElementById('screenAdmin').classList.add('active');
-        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
-    } else alert("Senha errada.");
 }
 </script>
 </body>
