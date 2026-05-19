@@ -354,123 +354,95 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /**
- * SISTEMA DE PONTO E ESCALA - VERSÃO CONSOLIDADA
- * Foco: Modais Dinâmicos, Regra de 10min de Atraso e Trava de CPF
+ * SISTEMA DE PONTO AUTOMATIZADO - SEM CONFIRMAÇÃO
+ * Foco: Gravação direta, Trava de CPF e Regra de 10min
  */
 
 const API_URL = "https://script.google.com/macros/s/AKfycbx7B-h_PORqhcwEo4Fv-Wof0LSSKrBeCFjwTVTYxKJqYEXC2QvMg0G3I0LNJCqTYa6XnA/exec";
 let dbEscalas = [];
 let dbPontos = [];
 
-// --- INICIALIZAÇÃO ---
 window.onload = () => {
-    criarModalAlertaDinamico(); // Cria o HTML do modal via Script
+    criarModalAlertaDinamico();
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const filtro = document.getElementById('filtroDataAdmin');
-    if(filtro) filtro.value = hoje;
+    if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hoje;
 
-    document.getElementById('cpfIn')?.addEventListener('input', mascaraCPF);
-    document.getElementById('cadCPF')?.addEventListener('input', mascaraCPF);
-    
-    document.getElementById('filtroDataAdmin')?.addEventListener('input', (e) => {
-        formatarData(e.target);
-        if(e.target.value.length === 10) renderAdmin();
+    document.getElementById('cpfIn')?.addEventListener('input', (e) => {
+        mascaraCPF(e);
+        if(e.target.value.length === 14) verificarCPFAdmin(); // Dispara automático ao completar CPF
     });
-
+    
+    document.getElementById('cadCPF')?.addEventListener('input', mascaraCPF);
     carregarDados();
-    setInterval(renderAdmin, 60000); // Revalida faltas a cada minuto
+    setInterval(renderAdmin, 60000);
 };
 
-// --- FUNÇÃO PARA EXIBIR ALERTAS VIA MODAL (SEM ALERT NATIVO) ---
-function exibirAlerta(titulo, msg, tipo = 'sucesso') {
-    const icones = {
-        'sucesso': 'bi-check-circle-fill text-success',
-        'erro': 'bi-x-circle-fill text-danger',
-        'info': 'bi-info-circle-fill text-primary'
-    };
+// --- ENVIO E GRAVAÇÃO DE PONTO (SEM CONFIRMAÇÃO) ---
+async function enviarPonto(cpf, nome, data, hora, tipo) {
+    try {
+        // Mudança para POST padrão para garantir o recebimento no Google Apps Script
+        await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                acao: "registrarPonto", 
+                data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } 
+            })
+        });
+
+        exibirAlerta("Ponto Batido!", `${tipo} registrada para ${nome} às ${hora}`, "sucesso");
+        document.getElementById('cpfIn').value = "";
+        setTimeout(carregarDados, 1000); 
+    } catch (e) {
+        exibirAlerta("Erro de Gravação", "Não foi possível salvar no banco de dados.", "erro");
+    }
+}
+
+async function verificarCPFAdmin() {
+    const input = document.getElementById('cpfIn');
+    const cpf = input.value;
     
-    document.getElementById('dynAlertaTitulo').innerText = titulo;
-    document.getElementById('dynAlertaMensagem').innerText = msg;
-    document.getElementById('dynAlertaIcone').innerHTML = `<i class="bi ${icones[tipo]}"></i>`;
+    if (cpf.replace(/\D/g, '') === "00000000000") {
+        const mSenha = document.getElementById('modalSenha');
+        if(mSenha) new bootstrap.Modal(mSenha).show();
+        return;
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     
-    const modalEl = document.getElementById('modalAlertaDinamico');
-    const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
-    instance.show();
+    // REGRA 1: Apenas cadastrados no dia
+    if (!colab) {
+        exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
+        input.value = "";
+        return;
+    }
+
+    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
+    let tipo = "Entrada";
+    
+    if (registro) {
+        if (!registro.Entrada) tipo = "Entrada";
+        else if (!registro.Intervalo) tipo = "Intervalo";
+        else if (!registro.Volta) tipo = "Volta";
+        else if (!registro.Saída) tipo = "Saída";
+        else { 
+            exibirAlerta("Atenção", "Todos os pontos de hoje já foram registrados.", "info"); 
+            input.value = "";
+            return; 
+        }
+    }
+
+    // REGRA 2: Registro imediato sem confirmação
+    const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    await enviarPonto(cpf, colab.Nome, hoje, horaAtual, tipo);
 }
 
-// --- CRIAÇÃO DO HTML DO MODAL VIA SCRIPT ---
-function criarModalAlertaDinamico() {
-    if (document.getElementById('modalAlertaDinamico')) return;
-    const html = `
-        <div class="modal fade" id="modalAlertaDinamico" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 15px 30px rgba(0,0,0,0.2);">
-                    <div class="modal-body text-center p-4">
-                        <div id="dynAlertaIcone" class="mb-3" style="font-size: 3.5rem;"></div>
-                        <h5 id="dynAlertaTitulo" class="fw-bold mb-2"></h5>
-                        <p id="dynAlertaMensagem" class="text-muted mb-4"></p>
-                        <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 12px; padding: 10px;">OK</button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    document.body.insertAdjacentHTML('beforeend', html);
-}
-
-// --- UTILITÁRIOS ---
-function atualizarRelogio() {
-    const agora = new Date();
-    const clock = document.getElementById('clock');
-    const dateFull = document.getElementById('date-full');
-    if(clock) clock.innerText = agora.toLocaleTimeString('pt-BR');
-    if(dateFull) dateFull.innerText = agora.toLocaleDateString('pt-BR', {
-        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
-    });
-}
-
-function hhmmToMinutes(str) {
-    if (!str || !str.includes(':')) return 0;
-    const [h, m] = str.split(':').map(Number);
-    return (h * 60) + m;
-}
-
-function mascaraCPF(e) {
-    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    e.target.value = v;
-}
-
-function formatarData(input) {
-    let v = input.value.replace(/\D/g, '').slice(0, 8);
-    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
-    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
-    input.value = v;
-}
-
-// --- COMUNICAÇÃO COM GOOGLE SHEETS ---
-function carregarDados() {
-    document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
-    const sE = document.createElement('script');
-    sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
-    sE.className = 'jsonp-temp';
-    document.body.appendChild(sE);
-
-    const sP = document.createElement('script');
-    sP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${Date.now()}`;
-    sP.className = 'jsonp-temp';
-    document.body.appendChild(sP);
-}
-
-function retornoEscalas(dados) { dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
-function retornoPontos(dados) { dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
-
-// --- RENDERIZAÇÃO DA INTERFACE ---
+// --- RENDERIZAÇÃO E REGRAS DE FALTA (10 MIN) ---
 function renderAdmin() {
     const filtro = document.getElementById('filtroDataAdmin').value;
     const agora = new Date();
@@ -480,7 +452,7 @@ function renderAdmin() {
     const ptsDia = dbPontos.filter(p => p.Data === filtro);
     const cpfsPresentes = ptsDia.filter(p => p.Entrada).map(p => p.CPF);
 
-    // Lógica: Falta se não bateu entrada e passou 10 minutos da escala
+    // REGRA 3: Conta falta apenas se passar 10 minutos do horário da escala
     const faltasEfetivas = escDia.filter(e => {
         if (cpfsPresentes.includes(e.CPF)) return false;
         return (minutosAgora > (hhmmToMinutes(e.Hora) + 10));
@@ -505,62 +477,76 @@ function renderAdmin() {
             <td>${p.Volta || '--:--'}</td>
             <td>${p.Saída || '--:--'}</td>
             <td><i class="bi bi-pencil text-primary"></i></td>
-        </tr>`).join('') || '<tr><td colspan="6">Nenhum registro encontrado.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="6">Sem registros.</td></tr>';
 }
 
-// --- LÓGICA DE REGISTRO DE PONTO ---
-async function verificarCPFAdmin() {
-    const input = document.getElementById('cpfIn');
-    const cpf = input.value;
-    
-    if (cpf.replace(/\D/g, '') === "00000000000") {
-        const mSenha = document.getElementById('modalSenha');
-        if(mSenha) new bootstrap.Modal(mSenha).show();
-        return;
-    }
+// --- FUNÇÕES DE INTERFACE E CARREGAMENTO ---
+function carregarDados() {
+    document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
+    const sE = document.createElement('script');
+    sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
+    sE.className = 'jsonp-temp';
+    document.body.appendChild(sE);
 
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    const colaborador = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
-    
-    // TRAVA: Apenas cadastrados no dia podem bater ponto
-    if (!colaborador) {
-        exibirAlerta("Acesso Negado", "Seu CPF não foi encontrado na escala de hoje.", "erro");
-        input.value = "";
-        return;
-    }
-
-    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
-    let tipo = "Entrada";
-    if (registro) {
-        if (!registro.Entrada) tipo = "Entrada";
-        else if (!registro.Intervalo) tipo = "Intervalo";
-        else if (!registro.Volta) tipo = "Volta";
-        else if (!registro.Saída) tipo = "Saída";
-        else { exibirAlerta("Concluído", "Você já realizou todos os registros de hoje.", "info"); return; }
-    }
-
-    if(confirm(`Confirmar registro de ${tipo} para ${colaborador.Nome}?`)) {
-        const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        await enviarPonto(cpf, colaborador.Nome, hoje, horaAtual, tipo);
-    }
+    const sP = document.createElement('script');
+    sP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${Date.now()}`;
+    sP.className = 'jsonp-temp';
+    document.body.appendChild(sP);
 }
 
-async function enviarPonto(cpf, nome, data, hora, tipo) {
-    try {
-        await fetch(API_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } })
-        });
-        exibirAlerta("Sucesso", `${tipo} registrado com sucesso para ${nome}.`, "sucesso");
-        document.getElementById('cpfIn').value = "";
-        setTimeout(carregarDados, 1500); 
-    } catch (e) {
-        exibirAlerta("Erro", "Falha na comunicação com o servidor.", "erro");
-    }
+function retornoEscalas(dados) { dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
+function retornoPontos(dados) { dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
+
+function criarModalAlertaDinamico() {
+    if (document.getElementById('modalAlertaDinamico')) return;
+    const html = `
+        <div class="modal fade" id="modalAlertaDinamico" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 15px 30px rgba(0,0,0,0.2);">
+                    <div class="modal-body text-center p-4">
+                        <div id="dynAlertaIcone" class="mb-3" style="font-size: 3.5rem;"></div>
+                        <h5 id="dynAlertaTitulo" class="fw-bold mb-2"></h5>
+                        <p id="dynAlertaMensagem" class="text-muted mb-4"></p>
+                        <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 12px; padding: 10px;">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
 }
 
-// --- GESTÃO DE ESCALAS ---
+function exibirAlerta(titulo, msg, tipo = 'sucesso') {
+    const icones = {
+        'sucesso': 'bi-check-circle-fill text-success',
+        'erro': 'bi-x-circle-fill text-danger',
+        'info': 'bi-info-circle-fill text-primary'
+    };
+    document.getElementById('dynAlertaTitulo').innerText = titulo;
+    document.getElementById('dynAlertaMensagem').innerText = msg;
+    document.getElementById('dynAlertaIcone').innerHTML = `<i class="bi ${icones[tipo]}"></i>`;
+    const instance = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAlertaDinamico'));
+    instance.show();
+}
+
+// --- AUXILIARES ---
+function atualizarRelogio() {
+    const agora = new Date();
+    if(document.getElementById('clock')) document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
+    if(document.getElementById('date-full')) document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'});
+}
+
+function hhmmToMinutes(str) {
+    if (!str || !str.includes(':')) return 0;
+    const [h, m] = str.split(':').map(Number);
+    return (h * 60) + m;
+}
+
+function mascaraCPF(e) {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
+}
+
 async function salvarEscala(btn) {
     const dados = {
         Nome: document.getElementById('cadNome').value,
@@ -568,46 +554,30 @@ async function salvarEscala(btn) {
         Data: document.getElementById('cadData').value,
         Hora: document.getElementById('cadHora').value
     };
-    
-    if (!dados.Nome || dados.CPF.length < 14) {
-        exibirAlerta("Atenção", "Preencha o Nome e o CPF corretamente.", "erro");
-        return;
-    }
-
+    if (!dados.Nome || dados.CPF.length < 14) return exibirAlerta("Erro", "Preencha os dados corretamente.", "erro");
     btn.disabled = true;
     try {
-        await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ acao: "salvarEscala", data: dados }) });
-        const modalCad = document.getElementById('modalCad');
-        if(modalCad) bootstrap.Modal.getInstance(modalCad).hide();
-        exibirAlerta("Salvo", "Escala registrada com sucesso.", "sucesso");
+        await fetch(API_URL, { method: "POST", body: JSON.stringify({ acao: "salvarEscala", data: dados }) });
+        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+        exibirAlerta("Salvo", "Escala adicionada.", "sucesso");
         setTimeout(carregarDados, 1000);
-    } catch (e) {
-        exibirAlerta("Erro", "Não foi possível salvar a escala.", "erro");
-    } finally {
-        btn.disabled = false;
-    }
+    } catch (e) { exibirAlerta("Erro", "Falha ao salvar.", "erro"); }
+    finally { btn.disabled = false; }
 }
 
 async function deletarEscala(index) {
-    if(!confirm("Tem certeza que deseja excluir esta escala?")) return;
-    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ acao: "deletarEscala", index: index }) });
-    exibirAlerta("Excluído", "A escala foi removida permanentemente.", "info");
-    setTimeout(carregarDados, 1000);
+    if(!confirm("Excluir escala?")) return;
+    await fetch(API_URL, { method: "POST", body: JSON.stringify({ acao: "deletarEscala", index: index }) });
+    setTimeout(carregarDados, 500);
 }
 
-// --- NAVEGAÇÃO ---
 function validarSenha() {
-    const pass = document.getElementById('adminPass').value;
-    if (pass === "1234") {
+    if (document.getElementById('adminPass').value === "1234") {
         document.getElementById('screenPonto').classList.remove('active');
         document.getElementById('screenAdmin').classList.add('active');
         document.getElementById('btnSairHeader').style.display = 'block';
-        const modalSenha = document.getElementById('modalSenha');
-        if(modalSenha) bootstrap.Modal.getInstance(modalSenha).hide();
-        document.getElementById('adminPass').value = "";
-    } else { 
-        exibirAlerta("Senha Inválida", "Acesso restrito a administradores.", "erro");
-    }
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+    } else { exibirAlerta("Erro", "Senha inválida.", "erro"); }
 }
 
 function sairAdmin() {
