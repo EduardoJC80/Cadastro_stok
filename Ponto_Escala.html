@@ -355,11 +355,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-/**
- * SISTEMA DE PONTO AUTOMATIZADO - SEM CONFIRMAÇÃO
- * Foco: Gravação direta, Trava de CPF e Regra de 10min
- */
-
 const API_URL = "https://script.google.com/macros/s/AKfycbx7B-h_PORqhcwEo4Fv-Wof0LSSKrBeCFjwTVTYxKJqYEXC2QvMg0G3I0LNJCqTYa6XnA/exec";
 let dbEscalas = [];
 let dbPontos = [];
@@ -374,50 +369,57 @@ window.onload = () => {
 
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
         mascaraCPF(e);
-        if(e.target.value.length === 14) verificarCPFAdmin(); // Dispara automático ao completar CPF
+        if(e.target.value.length === 14) verificarCPFAdmin();
     });
     
-    document.getElementById('cadCPF')?.addEventListener('input', mascaraCPF);
     carregarDados();
-    setInterval(renderAdmin, 60000);
 };
 
-// --- ENVIO E GRAVAÇÃO DE PONTO (SEM CONFIRMAÇÃO) ---
+// --- FUNÇÃO DE ENVIO REFORMULADA ---
 async function enviarPonto(cpf, nome, data, hora, tipo) {
+    // Exibe um feedback visual de carregamento (opcional)
+    console.log("Tentando gravar:", {cpf, nome, data, hora, tipo});
+
     try {
-        // Mudança para POST padrão para garantir o recebimento no Google Apps Script
-        await fetch(API_URL, {
+        // Para Google Apps Script, as vezes o envio via URLSearchParams é mais estável
+        const params = new URLSearchParams();
+        params.append('acao', 'registrarPonto');
+        params.append('data', JSON.stringify({ CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo }));
+
+        const response = await fetch(API_URL, {
             method: "POST",
-            body: JSON.stringify({ 
-                acao: "registrarPonto", 
-                data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } 
-            })
+            mode: "no-cors", // Mantido no-cors para evitar erro de redirecionamento do Google
+            body: params
         });
 
+        // Como o no-cors não permite ler a resposta, assumimos sucesso se não cair no catch
         exibirAlerta("Ponto Batido!", `${tipo} registrada para ${nome} às ${hora}`, "sucesso");
         document.getElementById('cpfIn').value = "";
-        setTimeout(carregarDados, 1000); 
+        
+        // Aguarda um pouco para o Google processar antes de recarregar
+        setTimeout(carregarDados, 2000); 
+
     } catch (e) {
-        exibirAlerta("Erro de Gravação", "Não foi possível salvar no banco de dados.", "erro");
+        console.error("Erro no fetch:", e);
+        exibirAlerta("Erro de Conexão", "Não foi possível alcançar o servidor.", "erro");
     }
 }
 
 async function verificarCPFAdmin() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
-    
+    const hoje = new Date().toLocaleDateString('pt-BR');
+
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const mSenha = document.getElementById('modalSenha');
         if(mSenha) new bootstrap.Modal(mSenha).show();
         return;
     }
 
-    const hoje = new Date().toLocaleDateString('pt-BR');
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     
-    // REGRA 1: Apenas cadastrados no dia
     if (!colab) {
-        exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
+        exibirAlerta("Não Autorizado", "CPF não está na escala de hoje.", "erro");
         input.value = "";
         return;
     }
@@ -437,50 +439,11 @@ async function verificarCPFAdmin() {
         }
     }
 
-    // REGRA 2: Registro imediato sem confirmação
     const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     await enviarPonto(cpf, colab.Nome, hoje, horaAtual, tipo);
 }
 
-// --- RENDERIZAÇÃO E REGRAS DE FALTA (10 MIN) ---
-function renderAdmin() {
-    const filtro = document.getElementById('filtroDataAdmin').value;
-    const agora = new Date();
-    const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
-
-    const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const ptsDia = dbPontos.filter(p => p.Data === filtro);
-    const cpfsPresentes = ptsDia.filter(p => p.Entrada).map(p => p.CPF);
-
-    // REGRA 3: Conta falta apenas se passar 10 minutos do horário da escala
-    const faltasEfetivas = escDia.filter(e => {
-        if (cpfsPresentes.includes(e.CPF)) return false;
-        return (minutosAgora > (hhmmToMinutes(e.Hora) + 10));
-    });
-
-    document.getElementById('countEscalados').innerText = escDia.length;
-    document.getElementById('countPresentes').innerText = cpfsPresentes.length;
-    document.getElementById('countFaltas').innerText = faltasEfetivas.length;
-
-    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
-        <tr>
-            <td><strong>${e.Nome}</strong><br><small>${e.CPF}</small></td>
-            <td>${e.Hora}</td>
-            <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
-        </tr>`).join('') || '<tr><td colspan="3">Sem escalas.</td></tr>';
-
-    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
-        <tr>
-            <td><strong>${p.Nome}</strong></td>
-            <td>${p.Entrada || '--:--'}</td>
-            <td>${p.Intervalo || '--:--'}</td>
-            <td>${p.Volta || '--:--'}</td>
-            <td>${p.Saída || '--:--'}</td>
-            <td><i class="bi bi-pencil text-primary"></i></td>
-        </tr>`).join('') || '<tr><td colspan="6">Sem registros.</td></tr>';
-}
-
-// --- FUNÇÕES DE INTERFACE E CARREGAMENTO ---
+// --- RESTANTE DAS FUNÇÕES (CARREGAMENTO E INTERFACE) ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -497,42 +460,58 @@ function carregarDados() {
 function retornoEscalas(dados) { dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
 function retornoPontos(dados) { dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
 
+function renderAdmin() {
+    const filtroInput = document.getElementById('filtroDataAdmin');
+    if(!filtroInput) return;
+    const filtro = filtroInput.value;
+    const agora = new Date();
+    const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
+
+    const escDia = dbEscalas.filter(e => e.Data === filtro);
+    const ptsDia = dbPontos.filter(p => p.Data === filtro);
+    const cpfsPresentes = ptsDia.filter(p => p.Entrada).map(p => p.CPF);
+
+    const faltasEfetivas = escDia.filter(e => {
+        if (cpfsPresentes.includes(e.CPF)) return false;
+        return (minutosAgora > (hhmmToMinutes(e.Hora) + 10));
+    });
+
+    if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
+    if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
+    if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
+
+    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
+        <tr><td><strong>${e.Nome}</strong></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" onclick="deletarEscala(${e._index})"></i></td></tr>
+    `).join('') || '<tr><td colspan="3">Vazio</td></tr>';
+
+    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
+        <tr><td><strong>${p.Nome}</strong></td><td>${p.Entrada||'--'}</td><td>${p.Intervalo||'--'}</td><td>${p.Volta||'--'}</td><td>${p.Saída||'--'}</td></tr>
+    `).join('') || '<tr><td colspan="5">Vazio</td></tr>';
+}
+
 function criarModalAlertaDinamico() {
     if (document.getElementById('modalAlertaDinamico')) return;
-    const html = `
-        <div class="modal fade" id="modalAlertaDinamico" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 15px 30px rgba(0,0,0,0.2);">
-                    <div class="modal-body text-center p-4">
-                        <div id="dynAlertaIcone" class="mb-3" style="font-size: 3.5rem;"></div>
-                        <h5 id="dynAlertaTitulo" class="fw-bold mb-2"></h5>
-                        <p id="dynAlertaMensagem" class="text-muted mb-4"></p>
-                        <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 12px; padding: 10px;">OK</button>
-                    </div>
+    const html = `<div class="modal fade" id="modalAlertaDinamico" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content" style="border-radius: 20px; border: none;">
+                <div class="modal-body text-center p-4">
+                    <div id="dynAlertaIcone" class="mb-3" style="font-size: 3.5rem;"></div>
+                    <h5 id="dynAlertaTitulo" class="fw-bold mb-2"></h5>
+                    <p id="dynAlertaMensagem" class="text-muted mb-4"></p>
+                    <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal" style="border-radius: 12px;">OK</button>
                 </div>
             </div>
-        </div>`;
+        </div>
+    </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function exibirAlerta(titulo, msg, tipo = 'sucesso') {
-    const icones = {
-        'sucesso': 'bi-check-circle-fill text-success',
-        'erro': 'bi-x-circle-fill text-danger',
-        'info': 'bi-info-circle-fill text-primary'
-    };
+function exibirAlerta(titulo, msg, tipo) {
+    const icones = {'sucesso': 'bi-check-circle-fill text-success', 'erro': 'bi-x-circle-fill text-danger', 'info': 'bi-info-circle-fill text-primary'};
     document.getElementById('dynAlertaTitulo').innerText = titulo;
     document.getElementById('dynAlertaMensagem').innerText = msg;
     document.getElementById('dynAlertaIcone').innerHTML = `<i class="bi ${icones[tipo]}"></i>`;
-    const instance = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAlertaDinamico'));
-    instance.show();
-}
-
-// --- AUXILIARES ---
-function atualizarRelogio() {
-    const agora = new Date();
-    if(document.getElementById('clock')) document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
-    if(document.getElementById('date-full')) document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'});
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAlertaDinamico')).show();
 }
 
 function hhmmToMinutes(str) {
@@ -547,43 +526,9 @@ function mascaraCPF(e) {
     e.target.value = v;
 }
 
-async function salvarEscala(btn) {
-    const dados = {
-        Nome: document.getElementById('cadNome').value,
-        CPF: document.getElementById('cadCPF').value,
-        Data: document.getElementById('cadData').value,
-        Hora: document.getElementById('cadHora').value
-    };
-    if (!dados.Nome || dados.CPF.length < 14) return exibirAlerta("Erro", "Preencha os dados corretamente.", "erro");
-    btn.disabled = true;
-    try {
-        await fetch(API_URL, { method: "POST", body: JSON.stringify({ acao: "salvarEscala", data: dados }) });
-        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        exibirAlerta("Salvo", "Escala adicionada.", "sucesso");
-        setTimeout(carregarDados, 1000);
-    } catch (e) { exibirAlerta("Erro", "Falha ao salvar.", "erro"); }
-    finally { btn.disabled = false; }
-}
-
-async function deletarEscala(index) {
-    if(!confirm("Excluir escala?")) return;
-    await fetch(API_URL, { method: "POST", body: JSON.stringify({ acao: "deletarEscala", index: index }) });
-    setTimeout(carregarDados, 500);
-}
-
-function validarSenha() {
-    if (document.getElementById('adminPass').value === "1234") {
-        document.getElementById('screenPonto').classList.remove('active');
-        document.getElementById('screenAdmin').classList.add('active');
-        document.getElementById('btnSairHeader').style.display = 'block';
-        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
-    } else { exibirAlerta("Erro", "Senha inválida.", "erro"); }
-}
-
-function sairAdmin() {
-    document.getElementById('screenAdmin').classList.remove('active');
-    document.getElementById('screenPonto').classList.add('active');
-    document.getElementById('btnSairHeader').style.display = 'none';
+function atualizarRelogio() {
+    const agora = new Date();
+    if(document.getElementById('clock')) document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
 }
 </script>
 </body>
