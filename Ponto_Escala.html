@@ -363,33 +363,29 @@ const API_URL = "https://script.google.com/macros/s/AKfycbx7B-h_PORqhcwEo4Fv-Wof
 let dbEscalas = [];
 let dbPontos = [];
 
-// ======================================
-// INICIALIZAÇÃO
-// ======================================
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
     const hoje = new Date().toLocaleDateString('pt-BR');
-    document.getElementById('filtroDataAdmin').value = hoje;
+    const filtroData = document.getElementById('filtroDataAdmin');
+    if(filtroData) filtroData.value = hoje;
 
-    document.getElementById('cpfIn').addEventListener('input', mascaraCPF);
-    document.getElementById('cadCPF').addEventListener('input', mascaraCPF);
-    
-    document.getElementById('filtroDataAdmin').addEventListener('input', (e) => {
-        mascaraData(e.target);
-        if(e.target.value.length === 10) renderAdmin();
-    });
-    
-    document.getElementById('cadData').addEventListener('input', (e) => mascaraData(e.target));
+    // Máscaras
+    const cpfIn = document.getElementById('cpfIn');
+    const cadCPF = document.getElementById('cadCPF');
+    if(cpfIn) cpfIn.addEventListener('input', mascaraCPF);
+    if(cadCPF) cadCPF.addEventListener('input', mascaraCPF);
 
     carregarDados();
 };
 
 function atualizarRelogio() {
+    const clock = document.getElementById('clock');
+    const dateFull = document.getElementById('date-full');
     const agora = new Date();
-    document.getElementById('clock').innerText = agora.toLocaleTimeString('pt-BR');
-    document.getElementById('date-full').innerText = agora.toLocaleDateString('pt-BR', {
+    if(clock) clock.innerText = agora.toLocaleTimeString('pt-BR');
+    if(dateFull) dateFull.innerText = agora.toLocaleDateString('pt-BR', {
         weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
     });
 }
@@ -402,98 +398,36 @@ function hhmmToMinutes(str) {
 }
 
 // ======================================
-// LÓGICA DO PONTO (ENTRADA, INTERVALO, VOLTA, SAÍDA)
+// ABRIR MODAL (CORRIGIDO)
 // ======================================
-async function processarPonto() {
-    const cpf = document.getElementById('cpfIn').value;
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    const agora = new Date();
-    const horaAtualStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const minutosAgora = hhmmToMinutes(horaAtualStr);
-
-    if (cpf.length < 14) return alert("CPF incompleto.");
-
-    const escala = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
-    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
-
-    if (!escala) return alert("Você não possui escala cadastrada para hoje.");
-
-    // 1. TRAVA DE DUPLICIDADE (45 MINUTOS)
-    const ultimoPonto = registro ? (registro.Saída || registro.Volta || registro.Intervalo || registro.Entrada) : null;
-    if (ultimoPonto) {
-        const diffUltimo = minutosAgora - hhmmToMinutes(ultimoPonto);
-        if (diffUltimo < 45 && diffUltimo >= 0) {
-            return alert(`Ponto já registrado às ${ultimoPonto}. Aguarde 45 minutos para nova batida.`);
-        }
-    }
-
-    let tipo = "";
-    let statusMsg = "";
-
-    // 2. DEFINIÇÃO DA SEQUÊNCIA
-    if (!registro || !registro.Entrada) {
-        tipo = "Entrada";
-        const minEscala = hhmmToMinutes(escala.Hora);
-        const diff = minutosAgora - minEscala;
-        if (diff > 5) statusMsg = `Atrasado ${diff} min.`;
-        else if (diff < -5) statusMsg = `Adiantado ${Math.abs(diff)} min.`;
-        else statusMsg = "No horário (tolerância de 5 min).";
-
-    } else if (!registro.Intervalo) {
-        tipo = "Intervalo";
-        statusMsg = "Início do intervalo.";
-
-    } else if (!registro.Volta) {
-        // TRAVA DE 40 MINUTOS DE INTERVALO
-        const minSaidaInt = hhmmToMinutes(registro.Intervalo);
-        const tempoDecorrido = minutosAgora - minSaidaInt;
-        if (tempoDecorrido < 40) {
-            return alert(`Aguarde ${40 - tempoDecorrido} minutos para bater a volta do intervalo.`);
-        }
-        tipo = "Volta";
-        statusMsg = "Retorno do intervalo.";
-
-    } else if (!registro.Saída) {
-        tipo = "Saída";
-        statusMsg = "Expediente encerrado.";
+function abrirModalCad() {
+    const modalEl = document.getElementById('modalCad');
+    if (modalEl) {
+        const inputData = document.getElementById('cadData');
+        const filtroData = document.getElementById('filtroDataAdmin');
+        if (inputData && filtroData) inputData.value = filtroData.value;
+        
+        const myModal = new bootstrap.Modal(modalEl);
+        myModal.show();
     } else {
-        return alert("Todos os pontos de hoje já foram registrados.");
-    }
-
-    if (confirm(`${escala.Nome}\nRegistro: ${tipo}\nHorário: ${horaAtualStr}\nStatus: ${statusMsg}`)) {
-        enviarPonto(cpf, escala.Nome, hoje, horaAtualStr, tipo);
-    }
-}
-
-async function enviarPonto(cpf, nome, data, hora, tipo) {
-    try {
-        await fetch(API_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } })
-        });
-        alert("Ponto registrado com sucesso!");
-        document.getElementById('cpfIn').value = "";
-        setTimeout(carregarDados, 1500);
-    } catch (e) {
-        alert("Erro de conexão.");
+        console.error("Erro: Modal com ID 'modalCad' não encontrado no HTML.");
     }
 }
 
 // ======================================
-// CADASTRO DE ESCALA (BOTÃO CORRIGIDO)
+// SALVAR ESCALA (SEM ERRO DE NULL)
 // ======================================
 async function salvarEscala(btn) {
-    // 1. Captura os elementos de input
+    // Se o btn não vier pelo 'this', tenta buscar pelo ID, mas sem travar se não achar
+    const botao = btn || document.getElementById('btnSalvarEscala');
+    
     const cadNome = document.getElementById('cadNome');
     const cadCPF = document.getElementById('cadCPF');
     const cadData = document.getElementById('cadData');
     const cadHora = document.getElementById('cadHora');
 
-    // 2. Validação de segurança para evitar novos erros de 'null'
     if (!cadNome || !cadCPF || !cadData || !cadHora) {
-        console.error("Erro: Verifique se os IDs cadNome, cadCPF, cadData e cadHora existem no seu HTML.");
-        return alert("Erro interno: Campos de entrada não encontrados.");
+        return alert("Erro: Campos de cadastro não encontrados no HTML.");
     }
 
     const dados = {
@@ -503,61 +437,94 @@ async function salvarEscala(btn) {
         Hora: cadHora.value.trim()
     };
 
-    // Validação de preenchimento
-    if (!dados.Nome || dados.CPF.length < 14 || !dados.Hora) {
-        return alert("Por favor, preencha todos os campos corretamente.");
-    }
+    if (!dados.Nome || dados.CPF.length < 14) return alert("Preencha Nome e CPF.");
 
-    // 3. Feedback visual no botão (o parâmetro 'btn' garante que não dê erro de null)
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
+    if (botao) {
+        botao.disabled = true;
+        botao.innerText = "SALVANDO...";
     }
 
     try {
         await fetch(API_URL, {
             method: "POST",
             mode: "no-cors",
-            cache: "no-cache",
-            body: JSON.stringify({ 
-                acao: "salvarEscala", 
-                data: dados 
-            })
+            body: JSON.stringify({ acao: "salvarEscala", data: dados })
         });
-
-        alert("Escala salva com sucesso!");
+        
+        alert("Escala salva!");
+        
+        // Fechar modal
+        const modalEl = document.getElementById('modalCad');
+        const modalInst = bootstrap.Modal.getInstance(modalEl);
+        if (modalInst) modalInst.hide();
 
         // Limpar campos
         cadNome.value = "";
         cadCPF.value = "";
         cadHora.value = "";
 
-        // Fechar o Modal automaticamente
-        const modalElement = document.getElementById('modalCad');
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) modalInstance.hide();
-
-        // Atualizar a tabela
         setTimeout(carregarDados, 1500);
-
     } catch (e) {
-        console.error("Erro na requisição:", e);
-        alert("Erro ao salvar escala. Verifique a conexão.");
+        alert("Erro ao salvar.");
     } finally {
-        // Restaurar botão
-        if (btn) {
-            btn.disabled = false;
-            btn.innerText = "SALVAR ESCALA";
+        if (botao) {
+            botao.disabled = false;
+            botao.innerText = "SALVAR ESCALA";
         }
     }
 }
 
 // ======================================
-// INTEGRAÇÃO COM PLANILHA (GET)
+// LÓGICA DO PONTO (MESMA LINHA)
+// ======================================
+async function processarPonto() {
+    const cpfInput = document.getElementById('cpfIn');
+    const cpf = cpfInput ? cpfInput.value : "";
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const agora = new Date();
+    const horaAtualStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const minutosAgora = hhmmToMinutes(horaAtualStr);
+
+    const escala = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
+    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
+
+    if (!escala) return alert("Não escalado para hoje.");
+
+    // Trava 45 min duplicidade
+    const ultimo = registro ? (registro.Saída || registro.Volta || registro.Intervalo || registro.Entrada) : null;
+    if (ultimo && (minutosAgora - hhmmToMinutes(ultimo) < 45)) {
+        return alert(`Aguarde 45 min. Último ponto: ${ultimo}`);
+    }
+
+    let tipo = "";
+    if (!registro || !registro.Entrada) tipo = "Entrada";
+    else if (!registro.Intervalo) tipo = "Intervalo";
+    else if (!registro.Volta) {
+        if (minutosAgora - hhmmToMinutes(registro.Intervalo) < 40) {
+            return alert("Aguarde 40 min de intervalo.");
+        }
+        tipo = "Volta";
+    } 
+    else if (!registro.Saída) tipo = "Saída";
+    else return alert("Ponto completo hoje.");
+
+    if (confirm(`Registrar ${tipo} para ${escala.Nome}?`)) {
+        await fetch(API_URL, {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: hoje, Hora: horaAtualStr, Tipo: tipo } })
+        });
+        if(cpfInput) cpfInput.value = "";
+        setTimeout(carregarDados, 1000);
+    }
+}
+
+// ======================================
+// CARREGAMENTO E RENDERIZAÇÃO
 // ======================================
 function carregarDados() {
-    const remover = document.querySelectorAll('.jsonp-script');
-    remover.forEach(s => s.remove());
+    const scripts = document.querySelectorAll('.jsonp-script');
+    scripts.forEach(s => s.remove());
 
     const scriptE = document.createElement('script');
     scriptE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
@@ -570,52 +537,31 @@ function carregarDados() {
     document.body.appendChild(scriptP);
 }
 
-function retornoEscalas(dados) {
-    dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 }));
-    renderAdmin();
-}
+function retornoEscalas(d) { dbEscalas = d; renderAdmin(); }
+function retornoPontos(d) { dbPontos = d; renderAdmin(); }
 
-function retornoPontos(dados) {
-    dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 }));
-    renderAdmin();
-}
-
-// ======================================
-// RENDERIZAÇÃO E INTERFACE
-// ======================================
 function renderAdmin() {
-    const filtro = document.getElementById('filtroDataAdmin').value.trim();
+    const filtro = document.getElementById('filtroDataAdmin')?.value || "";
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     const ptsDia = dbPontos.filter(p => p.Data === filtro);
 
-    document.getElementById('countEscalados').innerText = escDia.length;
-    document.getElementById('countPresentes').innerText = ptsDia.length;
-    document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
-
-    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
+    const tabEsc = document.getElementById('tabEscalados');
+    if(tabEsc) tabEsc.innerHTML = escDia.map((e, i) => `
         <tr>
-            <td class="text-start ps-4"><b>${e.Nome}</b><br><small>${e.CPF}</small></td>
+            <td>${e.Nome}</td>
             <td>${e.Hora}</td>
-            <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
-        </tr>`).join('') || '<tr><td colspan="3" class="py-3">Sem escalas.</td></tr>';
+            <td><i class="bi bi-trash text-danger" onclick="deletarEscala(${i+2})"></i></td>
+        </tr>`).join('');
 
-    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
+    const tabPts = document.getElementById('tabStatus');
+    if(tabPts) tabPts.innerHTML = ptsDia.map(p => `
         <tr>
-            <td class="text-start ps-4"><b>${p.Nome}</b></td>
-            <td>${p.Entrada || '--:--'}</td>
-            <td>${p.Intervalo || '--:--'}</td>
-            <td>${p.Volta || '--:--'}</td>
-            <td>${p.Saída || '--:--'}</td>
-            <td><i class="bi bi-pencil text-primary"></i></td>
-        </tr>`).join('') || '<tr><td colspan="6" class="py-3">Nenhum ponto registrado.</td></tr>';
-}
-
-// MÁSCARAS
-function mascaraData(input) {
-    let v = input.value.replace(/\D/g, '').slice(0, 8);
-    if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
-    else if (v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
-    input.value = v;
+            <td>${p.Nome}</td>
+            <td>${p.Entrada || '-'}</td>
+            <td>${p.Intervalo || '-'}</td>
+            <td>${p.Volta || '-'}</td>
+            <td>${p.Saída || '-'}</td>
+        </tr>`).join('');
 }
 
 function mascaraCPF(e) {
@@ -624,33 +570,20 @@ function mascaraCPF(e) {
     e.target.value = v;
 }
 
-// NAVEGAÇÃO ADMIN
 function verificarCPFAdmin() {
-    const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
-    if (cpf === "00000000000") new bootstrap.Modal(document.getElementById('modalSenha')).show();
+    const cpf = document.getElementById('cpfIn')?.value.replace(/\D/g, '');
+    if (cpf === "00000000000") abrirModalSenha();
     else processarPonto();
 }
 
+function abrirModalSenha() { new bootstrap.Modal(document.getElementById('modalSenha')).show(); }
+
 function validarSenha() {
     if (document.getElementById('adminPass').value === "1234") {
-        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
         document.getElementById('screenPonto').classList.remove('active');
         document.getElementById('screenAdmin').classList.add('active');
-        document.getElementById('btnSairHeader').style.display = 'block';
-    } else { alert("Senha incorreta!"); }
-}
-
-function sairAdmin() {
-    document.getElementById('screenAdmin').classList.remove('active');
-    document.getElementById('screenPonto').classList.add('active');
-    document.getElementById('btnSairHeader').style.display = 'none';
-    document.getElementById('cpfIn').value = "";
-}
-
-async function deletarEscala(idx) {
-    if (!confirm("Excluir esta escala?")) return;
-    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ acao: "deletarEscala", index: idx }) });
-    setTimeout(carregarDados, 1000);
+        bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
+    } else alert("Senha errada.");
 }
 </script>
 </body>
