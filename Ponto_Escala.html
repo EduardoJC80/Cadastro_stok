@@ -318,7 +318,7 @@
 
             <input id="cadHora" type="time" class="form-control mb-4 rounded-4 border-0 bg-light py-3">
 
-<button id="btnSalvarEscala" class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="salvarEscala()">
+<button class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="salvarEscala(this)">
     SALVAR ESCALA
 </button>
         </div>
@@ -484,42 +484,70 @@ async function enviarPonto(cpf, nome, data, hora, tipo) {
 // CADASTRO DE ESCALA (BOTÃO CORRIGIDO)
 // ======================================
 async function salvarEscala(btn) {
-    // Se o botão não foi passado pelo 'this', tentamos pelo ID
-    const botao = btn || document.getElementById('btnSalvarEscala');
-    
-    const dados = {
-        Nome: document.getElementById('cadNome').value.trim(),
-        CPF: document.getElementById('cadCPF').value.trim(),
-        Data: document.getElementById('cadData').value.trim(),
-        Hora: document.getElementById('cadHora').value.trim()
-    };
+    // 1. Captura os elementos de input
+    const cadNome = document.getElementById('cadNome');
+    const cadCPF = document.getElementById('cadCPF');
+    const cadData = document.getElementById('cadData');
+    const cadHora = document.getElementById('cadHora');
 
-    if (!dados.Nome || dados.CPF.length < 14 || !dados.Hora) {
-        return alert("Preencha todos os campos do cadastro.");
+    // 2. Validação de segurança para evitar novos erros de 'null'
+    if (!cadNome || !cadCPF || !cadData || !cadHora) {
+        console.error("Erro: Verifique se os IDs cadNome, cadCPF, cadData e cadHora existem no seu HTML.");
+        return alert("Erro interno: Campos de entrada não encontrados.");
     }
 
-    if (botao) {
-        botao.disabled = true;
-        botao.innerText = "SALVANDO...";
+    const dados = {
+        Nome: cadNome.value.trim(),
+        CPF: cadCPF.value.trim(),
+        Data: cadData.value.trim(),
+        Hora: cadHora.value.trim()
+    };
+
+    // Validação de preenchimento
+    if (!dados.Nome || dados.CPF.length < 14 || !dados.Hora) {
+        return alert("Por favor, preencha todos os campos corretamente.");
+    }
+
+    // 3. Feedback visual no botão (o parâmetro 'btn' garante que não dê erro de null)
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
     }
 
     try {
         await fetch(API_URL, {
             method: "POST",
             mode: "no-cors",
-            body: JSON.stringify({ acao: "salvarEscala", data: dados })
+            cache: "no-cache",
+            body: JSON.stringify({ 
+                acao: "salvarEscala", 
+                data: dados 
+            })
         });
-        
-        alert("Escala salva!");
-        bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        ['cadNome', 'cadCPF', 'cadHora'].forEach(id => document.getElementById(id).value = "");
+
+        alert("Escala salva com sucesso!");
+
+        // Limpar campos
+        cadNome.value = "";
+        cadCPF.value = "";
+        cadHora.value = "";
+
+        // Fechar o Modal automaticamente
+        const modalElement = document.getElementById('modalCad');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) modalInstance.hide();
+
+        // Atualizar a tabela
         setTimeout(carregarDados, 1500);
+
     } catch (e) {
-        alert("Erro ao salvar.");
+        console.error("Erro na requisição:", e);
+        alert("Erro ao salvar escala. Verifique a conexão.");
     } finally {
-        if (botao) {
-            botao.disabled = false;
-            botao.innerText = "SALVAR ESCALA";
+        // Restaurar botão
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "SALVAR ESCALA";
         }
     }
 }
