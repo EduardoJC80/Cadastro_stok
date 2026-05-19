@@ -318,9 +318,9 @@
 
             <input id="cadHora" type="time" class="form-control mb-4 rounded-4 border-0 bg-light py-3">
 
-            <button class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="salvarEscala()">
-                SALVAR ESCALA
-            </button>
+<button id="btnSalvarEscala" class="btn btn-primary w-100 py-3 rounded-4 fw-800" onclick="salvarEscala()">
+    SALVAR ESCALA
+</button>
         </div>
     </div>
 </div>
@@ -356,7 +356,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ======================================
-// CONFIGURAÇÕES - URL DA API
+// CONFIGURAÇÕES
 // ======================================
 const API_URL = "https://script.google.com/macros/s/AKfycbx7B-h_PORqhcwEo4Fv-Wof0LSSKrBeCFjwTVTYxKJqYEXC2QvMg0G3I0LNJCqTYa6XnA/exec";
 
@@ -364,17 +364,15 @@ let dbEscalas = [];
 let dbPontos = [];
 
 // ======================================
-// INICIALIZAÇÃO AO CARREGAR
+// INICIALIZAÇÃO
 // ======================================
 window.onload = () => {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
-    // Define a data de hoje (Padrão: 18/05/2026)
     const hoje = new Date().toLocaleDateString('pt-BR');
     document.getElementById('filtroDataAdmin').value = hoje;
 
-    // Configuração de Máscaras
     document.getElementById('cpfIn').addEventListener('input', mascaraCPF);
     document.getElementById('cadCPF').addEventListener('input', mascaraCPF);
     
@@ -385,7 +383,6 @@ window.onload = () => {
     
     document.getElementById('cadData').addEventListener('input', (e) => mascaraData(e.target));
 
-    // Carga inicial
     carregarDados();
 };
 
@@ -397,7 +394,7 @@ function atualizarRelogio() {
     });
 }
 
-// --- UTILITÁRIOS DE TEMPO ---
+// --- UTILITÁRIOS ---
 function hhmmToMinutes(str) {
     if (!str || !str.includes(':')) return 0;
     const [h, m] = str.split(':').map(Number);
@@ -405,7 +402,7 @@ function hhmmToMinutes(str) {
 }
 
 // ======================================
-// LÓGICA DE REGISTRO DE PONTO
+// LÓGICA DO PONTO (ENTRADA, INTERVALO, VOLTA, SAÍDA)
 // ======================================
 async function processarPonto() {
     const cpf = document.getElementById('cpfIn').value;
@@ -419,53 +416,52 @@ async function processarPonto() {
     const escala = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
 
-    if (!escala) return alert("Colaborador não encontrado na escala de hoje.");
+    if (!escala) return alert("Você não possui escala cadastrada para hoje.");
 
-    // 1. BLOQUEIO DE 45 MINUTOS (Antiduplicidade)
+    // 1. TRAVA DE DUPLICIDADE (45 MINUTOS)
     const ultimoPonto = registro ? (registro.Saída || registro.Volta || registro.Intervalo || registro.Entrada) : null;
     if (ultimoPonto) {
         const diffUltimo = minutosAgora - hhmmToMinutes(ultimoPonto);
         if (diffUltimo < 45 && diffUltimo >= 0) {
-            return alert(`Ponto já registrado às ${ultimoPonto}. Aguarde 45 minutos.`);
+            return alert(`Ponto já registrado às ${ultimoPonto}. Aguarde 45 minutos para nova batida.`);
         }
     }
 
     let tipo = "";
-    let statusTexto = "";
+    let statusMsg = "";
 
-    // 2. DEFINIÇÃO DA SEQUÊNCIA DO PONTO
+    // 2. DEFINIÇÃO DA SEQUÊNCIA
     if (!registro || !registro.Entrada) {
         tipo = "Entrada";
         const minEscala = hhmmToMinutes(escala.Hora);
         const diff = minutosAgora - minEscala;
-        if (diff > 5) statusTexto = `Atrasado ${diff} min.`;
-        else if (diff < -5) statusTexto = `Adiantado ${Math.abs(diff)} min.`;
-        else statusTexto = "No horário.";
+        if (diff > 5) statusMsg = `Atrasado ${diff} min.`;
+        else if (diff < -5) statusMsg = `Adiantado ${Math.abs(diff)} min.`;
+        else statusMsg = "No horário (tolerância de 5 min).";
 
     } else if (!registro.Intervalo) {
         tipo = "Intervalo";
-        statusTexto = "Saída para descanso.";
+        statusMsg = "Início do intervalo.";
 
     } else if (!registro.Volta) {
-        // Trava de 40 minutos de intervalo
+        // TRAVA DE 40 MINUTOS DE INTERVALO
         const minSaidaInt = hhmmToMinutes(registro.Intervalo);
-        const tempoPassado = minutosAgora - minSaidaInt;
-        if (tempoPassado < 40) {
-            return alert(`Aguarde mais ${40 - tempoPassado} minutos para retornar do intervalo.`);
+        const tempoDecorrido = minutosAgora - minSaidaInt;
+        if (tempoDecorrido < 40) {
+            return alert(`Aguarde ${40 - tempoDecorrido} minutos para bater a volta do intervalo.`);
         }
         tipo = "Volta";
-        statusTexto = "Retorno ao trabalho.";
+        statusMsg = "Retorno do intervalo.";
 
     } else if (!registro.Saída) {
         tipo = "Saída";
-        statusTexto = "Fim do expediente.";
+        statusMsg = "Expediente encerrado.";
     } else {
-        return alert("Todos os pontos já foram batidos hoje.");
+        return alert("Todos os pontos de hoje já foram registrados.");
     }
 
-    // 3. CONFIRMAÇÃO
-    if (confirm(`Confirmar ${tipo} de ${escala.Nome} às ${horaAtualStr}?\nStatus: ${statusTexto}`)) {
-        await enviarPonto(cpf, escala.Nome, hoje, horaAtualStr, tipo);
+    if (confirm(`${escala.Nome}\nRegistro: ${tipo}\nHorário: ${horaAtualStr}\nStatus: ${statusMsg}`)) {
+        enviarPonto(cpf, escala.Nome, hoje, horaAtualStr, tipo);
     }
 }
 
@@ -476,19 +472,21 @@ async function enviarPonto(cpf, nome, data, hora, tipo) {
             mode: "no-cors",
             body: JSON.stringify({ acao: "registrarPonto", data: { CPF: cpf, Nome: nome, Data: data, Hora: hora, Tipo: tipo } })
         });
-        alert("Ponto enviado com sucesso!");
+        alert("Ponto registrado com sucesso!");
         document.getElementById('cpfIn').value = "";
         setTimeout(carregarDados, 1500);
     } catch (e) {
-        alert("Erro na conexão.");
+        alert("Erro de conexão.");
     }
 }
 
 // ======================================
-// GESTÃO DE ESCALAS (SALVAR / DELETAR)
+// CADASTRO DE ESCALA (BOTÃO CORRIGIDO)
 // ======================================
-async function salvarEscala() {
-    const btn = document.getElementById('btnSalvarEscala');
+async function salvarEscala(btn) {
+    // Se o botão não foi passado pelo 'this', tentamos pelo ID
+    const botao = btn || document.getElementById('btnSalvarEscala');
+    
     const dados = {
         Nome: document.getElementById('cadNome').value.trim(),
         CPF: document.getElementById('cadCPF').value.trim(),
@@ -496,12 +494,14 @@ async function salvarEscala() {
         Hora: document.getElementById('cadHora').value.trim()
     };
 
-    if (!dados.Nome || dados.CPF.length < 14 || dados.Data.length < 10) {
-        return alert("Preencha todos os campos corretamente.");
+    if (!dados.Nome || dados.CPF.length < 14 || !dados.Hora) {
+        return alert("Preencha todos os campos do cadastro.");
     }
 
-    btn.disabled = true;
-    btn.innerText = "SALVANDO...";
+    if (botao) {
+        botao.disabled = true;
+        botao.innerText = "SALVANDO...";
+    }
 
     try {
         await fetch(API_URL, {
@@ -510,33 +510,22 @@ async function salvarEscala() {
             body: JSON.stringify({ acao: "salvarEscala", data: dados })
         });
         
-        alert("Escala salva com sucesso!");
+        alert("Escala salva!");
         bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
-        // Limpa campos
         ['cadNome', 'cadCPF', 'cadHora'].forEach(id => document.getElementById(id).value = "");
         setTimeout(carregarDados, 1500);
     } catch (e) {
         alert("Erro ao salvar.");
     } finally {
-        btn.disabled = false;
-        btn.innerText = "SALVAR ESCALA";
+        if (botao) {
+            botao.disabled = false;
+            botao.innerText = "SALVAR ESCALA";
+        }
     }
 }
 
-async function deletarEscala(idx) {
-    if (!confirm("Excluir esta escala permanentemente?")) return;
-    try {
-        await fetch(API_URL, { 
-            method: "POST", 
-            mode: "no-cors",
-            body: JSON.stringify({ acao: "deletarEscala", index: idx }) 
-        });
-        setTimeout(carregarDados, 1000);
-    } catch(e) { console.error(e); }
-}
-
 // ======================================
-// SINCRONIZAÇÃO COM GOOGLE SHEETS
+// INTEGRAÇÃO COM PLANILHA (GET)
 // ======================================
 function carregarDados() {
     const remover = document.querySelectorAll('.jsonp-script');
@@ -564,7 +553,7 @@ function retornoPontos(dados) {
 }
 
 // ======================================
-// UI / RENDERIZAÇÃO
+// RENDERIZAÇÃO E INTERFACE
 // ======================================
 function renderAdmin() {
     const filtro = document.getElementById('filtroDataAdmin').value.trim();
@@ -575,16 +564,14 @@ function renderAdmin() {
     document.getElementById('countPresentes').innerText = ptsDia.length;
     document.getElementById('countFaltas').innerText = Math.max(0, escDia.length - ptsDia.length);
 
-    const tabEsc = document.getElementById('tabEscalados');
-    tabEsc.innerHTML = escDia.map(e => `
+    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr>
             <td class="text-start ps-4"><b>${e.Nome}</b><br><small>${e.CPF}</small></td>
             <td>${e.Hora}</td>
             <td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="deletarEscala(${e._index})"></i></td>
-        </tr>`).join('') || '<tr><td colspan="3" class="text-center text-secondary py-3">Sem escalas.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="3" class="py-3">Sem escalas.</td></tr>';
 
-    const tabPts = document.getElementById('tabStatus');
-    tabPts.innerHTML = ptsDia.map(p => `
+    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
         <tr>
             <td class="text-start ps-4"><b>${p.Nome}</b></td>
             <td>${p.Entrada || '--:--'}</td>
@@ -592,10 +579,10 @@ function renderAdmin() {
             <td>${p.Volta || '--:--'}</td>
             <td>${p.Saída || '--:--'}</td>
             <td><i class="bi bi-pencil text-primary"></i></td>
-        </tr>`).join('') || '<tr><td colspan="6" class="text-center text-secondary py-3">Nenhum ponto batido.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="6" class="py-3">Nenhum ponto registrado.</td></tr>';
 }
 
-// --- MÁSCARAS E NAVEGAÇÃO ---
+// MÁSCARAS
 function mascaraData(input) {
     let v = input.value.replace(/\D/g, '').slice(0, 8);
     if (v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
@@ -609,6 +596,7 @@ function mascaraCPF(e) {
     e.target.value = v;
 }
 
+// NAVEGAÇÃO ADMIN
 function verificarCPFAdmin() {
     const cpf = document.getElementById('cpfIn').value.replace(/\D/g, '');
     if (cpf === "00000000000") new bootstrap.Modal(document.getElementById('modalSenha')).show();
@@ -631,9 +619,10 @@ function sairAdmin() {
     document.getElementById('cpfIn').value = "";
 }
 
-function abrirModalCad() {
-    document.getElementById('cadData').value = document.getElementById('filtroDataAdmin').value;
-    new bootstrap.Modal(document.getElementById('modalCad')).show();
+async function deletarEscala(idx) {
+    if (!confirm("Excluir esta escala?")) return;
+    await fetch(API_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ acao: "deletarEscala", index: idx }) });
+    setTimeout(carregarDados, 1000);
 }
 </script>
 </body>
