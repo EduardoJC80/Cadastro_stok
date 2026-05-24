@@ -374,10 +374,9 @@ window.onload = () => {
     const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
     if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
 
-    // Escuta a digitação ou leitura pelo input de CPF
+    // Apenas aplica a máscara visual durante a digitação (Sem envio automático)
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
         mascaraCPF(e);
-        if(e.target.value.length === 14) verificarEGravarPonto();
     });
     
     carregarDados();
@@ -386,6 +385,9 @@ window.onload = () => {
 
 // --- FUNÇÃO DE ENVIO AO SERVIDOR ---
 async function enviarPonto(payload) {
+    // Limpa o campo imediatamente na tela para dar agilidade visual ao usuário
+    if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
+
     try {
         await fetch(API_URL, {
             method: "POST",
@@ -393,9 +395,8 @@ async function enviarPonto(payload) {
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify(payload)
         });
-        document.getElementById('cpfIn').value = "";
         
-        // Recarrega os dados imediatamente na memória do script para atualizar a tela sem F5
+        // Recarrega os dados em segundo plano para atualizar as tabelas do Admin
         carregarDados(); 
     } catch (e) {
         exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
@@ -407,6 +408,11 @@ async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
     const hoje = new Date().toLocaleDateString('pt-BR');
+
+    if (!cpf || cpf.length < 14) {
+        exibirAlerta("Aviso", "Insira um CPF completo para registrar.", "info");
+        return;
+    }
 
     // Código de atalho para Painel Admin
     if (cpf.replace(/\D/g, '') === "00000000000") {
@@ -493,8 +499,8 @@ async function verificarEGravarPonto() {
         }
     } 
     else if (tipo === "Saída") {
-        const minutesVolta = extrairMinutos(registro.Volta);
-        const tempoPosVolta = minutosAtual - minutesVolta;
+        const minutosVolta = extrairMinutos(registro.Volta);
+        const tempoPosVolta = minutosAtual - minutosVolta;
         if (tempoPosVolta < 90) {
             exibirAlerta("Bloqueado", "Ir para casa (saída) não pode ser 1h30 após volta intervalo.", "erro");
             input.value = "";
@@ -515,6 +521,11 @@ async function verificarEGravarPonto() {
 
     exibirAlerta(`Ponto: ${statusPonto}`, `${colab.Nome} - ${msgModal}`, statusIcone);
     await enviarPonto(payload);
+}
+
+// --- GATILHO COMPATÍVEL COM O BOTÃO DO SEU HTML ---
+function verificarCPFAdmin() {
+    verificarEGravarPonto();
 }
 
 // --- CARREGAMENTO DE BANCOS POR JSONP ---
@@ -554,7 +565,6 @@ function renderAdmin() {
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
-    // Adicionado a tag small contendo o CPF logo abaixo do nome do funcionário
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr><td class="text-start ps-4"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td></tr>
     `).join('') || '<tr><td colspan="3">Nenhuma escala para este dia.</td></tr>';
@@ -564,7 +574,6 @@ function renderAdmin() {
     `).join('') || '<tr><td colspan="6">Nenhum ponto registrado.</td></tr>';
 }
 
-// --- FUNÇÕES COMPATÍVEIS COM OS BOTÕES DO SEU HTML ---
 function abrirModalCad() {
     const mCad = document.getElementById('modalCad');
     if(mCad) bootstrap.Modal.getOrCreateInstance(mCad).show();
@@ -580,14 +589,6 @@ function syncDate(valor, idAlvo) {
     const partes = valor.split('-');
     document.getElementById(idAlvo).value = partes[2] + '/' + partes[1] + '/' + partes[0];
     renderAdmin();
-}
-
-function verificarCPFAdmin() {
-    if(document.getElementById('cpfIn').value.length === 14) {
-        verificarEGravarPonto();
-    } else {
-        exibirAlerta("Aviso", "Insira um CPF completo para registrar.", "info");
-    }
 }
 
 function criarModalAlertaDinamico() {
@@ -673,7 +674,6 @@ function validarSenha() {
 }
 
 function sairAdmin() {
-    // Garante que os inputs internos sensíveis e o de entrada sejam limpos na saída
     if(document.getElementById('adminPass')) document.getElementById('adminPass').value = '';
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = '';
     
