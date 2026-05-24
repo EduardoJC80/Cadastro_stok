@@ -374,7 +374,7 @@ window.onload = () => {
     const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
     if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
 
-    // Apenas aplica a máscara visual durante a digitação (Sem envio automático)
+    // Apenas aplica a máscara visual durante a digitação
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
         mascaraCPF(e);
     });
@@ -385,7 +385,6 @@ window.onload = () => {
 
 // --- FUNÇÃO DE ENVIO AO SERVIDOR ---
 async function enviarPonto(payload) {
-    // Limpa o campo imediatamente na tela para dar agilidade visual ao usuário
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
 
     try {
@@ -396,7 +395,6 @@ async function enviarPonto(payload) {
             body: JSON.stringify(payload)
         });
         
-        // Recarrega os dados em segundo plano para atualizar as tabelas do Admin
         carregarDados(); 
     } catch (e) {
         exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
@@ -414,7 +412,6 @@ async function verificarEGravarPonto() {
         return;
     }
 
-    // Código de atalho para Painel Admin
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const mSenha = document.getElementById('modalSenha');
         if(mSenha) bootstrap.Modal.getOrCreateInstance(mSenha).show();
@@ -422,7 +419,6 @@ async function verificarEGravarPonto() {
         return;
     }
 
-    // Validação estrita de escala para o dia corrente
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     if (!colab) {
         exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
@@ -454,7 +450,6 @@ async function verificarEGravarPonto() {
         }
     }
 
-    // Trava de segurança para rebatimento geral dentro de 40 minutos
     if (registro) {
         const horariosExistentes = [registro.Entrada, registro.Intervalo, registro.Volta, registro.Saída].filter(Boolean);
         if (horariosExistentes.length > 0) {
@@ -462,7 +457,7 @@ async function verificarEGravarPonto() {
             const minutosUltima = extrairMinutos(ultimaBatidaStr);
             
             if ((minutosAtual - minutosUltima) < 40) {
-                exibirAlerta("Aviso", `${colab.Nome} do CPF ${cpf} já registrou ponto às ${ultimaBatidaStr}`, "info");
+                exibirAlerta("Aviso", `${colab.Nome} já registrou ponto às ${ultimaBatidaStr}`, "info");
                 input.value = "";
                 return;
             }
@@ -491,7 +486,7 @@ async function verificarEGravarPonto() {
     } 
     else if (tipo === "Volta") {
         const minutosIntervalo = extrairMinutos(registro.Intervalo);
-        const tempoDeIntervalo = minutosAtual - minutosIntervalo;
+        const tempoDeIntervalo = minutesAtual - minutosIntervalo;
         if (tempoDeIntervalo < 40) {
             exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar depois de 40 minutos.", "erro");
             input.value = "";
@@ -508,6 +503,7 @@ async function verificarEGravarPonto() {
         }
     }
 
+    // Configuração do payload estruturado estritamente para corresponder às colunas da planilha do App Script
     const payload = {
         acao: "registrarPonto",
         data: {
@@ -523,7 +519,6 @@ async function verificarEGravarPonto() {
     await enviarPonto(payload);
 }
 
-// --- GATILHO COMPATÍVEL COM O BOTÃO DO SEU HTML ---
 function verificarCPFAdmin() {
     verificarEGravarPonto();
 }
@@ -564,6 +559,20 @@ function renderAdmin() {
     if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
+
+    // --- ALIMENTAÇÃO DINÂMICA DOS MENUS HOVER (AO PASSAR O MOUSE) ---
+    const listEscalados = document.getElementById('listEscalados');
+    if(listEscalados) {
+        listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
+    }
+    const listPresentes = document.getElementById('listPresentes');
+    if(listPresentes) {
+        listPresentes.innerHTML = ptsDia.filter(p => p.Entrada).map(p => `<div>${p.Nome} - ${p.Entrada}</div>`).join('') || 'Ninguém';
+    }
+    const listFaltas = document.getElementById('listFaltas');
+    if(listFaltas) {
+        listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
+    }
 
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr><td class="text-start ps-4"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td></tr>
