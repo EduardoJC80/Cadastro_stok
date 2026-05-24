@@ -493,8 +493,8 @@ async function verificarEGravarPonto() {
         }
     } 
     else if (tipo === "Saída") {
-        const minutosVolta = extrairMinutos(registro.Volta);
-        const tempoPosVolta = minutosAtual - minutosVolta;
+        const minutesVolta = extrairMinutos(registro.Volta);
+        const tempoPosVolta = minutosAtual - minutesVolta;
         if (tempoPosVolta < 90) {
             exibirAlerta("Bloqueado", "Ir para casa (saída) não pode ser 1h30 após volta intervalo.", "erro");
             input.value = "";
@@ -554,8 +554,9 @@ function renderAdmin() {
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
+    // Adicionado a tag small contendo o CPF logo abaixo do nome do funcionário
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
-        <tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td></tr>
+        <tr><td class="text-start ps-4"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td></tr>
     `).join('') || '<tr><td colspan="3">Nenhuma escala para este dia.</td></tr>';
 
     document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
@@ -636,24 +637,21 @@ async function salvarEscala(btn) {
     const d = {
         Nome: document.getElementById('cadNome').value,
         CPF: document.getElementById('cadCPF').value,
-        Data: String(document.getElementById('cadData').value), // Força o envio da data como String pura
+        Data: String(document.getElementById('cadData').value),
         Hora: document.getElementById('cadHora').value
     };
     if(!d.Nome || d.CPF.length < 14 || !d.Data || !d.Hora) return exibirAlerta("Erro", "Preencha todos os campos corretamente.", "erro");
     
-    // Altera o estado do botão para feedback visual
     const textoOriginal = btn.innerText;
     btn.disabled = true;
     btn.innerText = "Cadastrando funcionário...";
 
     await enviarPonto({ acao: "salvarEscala", data: d });
     
-    // Restaura o botão e fecha o modal
     btn.innerText = textoOriginal;
     btn.disabled = false;
     bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
     
-    // Limpa os campos do formulário para o próximo uso
     document.getElementById('cadNome').value = "";
     document.getElementById('cadCPF').value = "";
     document.getElementById('cadData').value = "";
@@ -675,6 +673,10 @@ function validarSenha() {
 }
 
 function sairAdmin() {
+    // Garante que os inputs internos sensíveis e o de entrada sejam limpos na saída
+    if(document.getElementById('adminPass')) document.getElementById('adminPass').value = '';
+    if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = '';
+    
     document.getElementById('screenAdmin').classList.remove('active');
     document.getElementById('screenPonto').classList.add('active');
     document.getElementById('btnSairHeader').style.display = 'none';
