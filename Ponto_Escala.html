@@ -357,7 +357,6 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx9aF992l8G3IvPNQOJYSPUBnLUcCP64QBMtSyHTwBIemE0qYDtGQa6Vgu0bM_u_jc3LA/exec";
 let dbEscalas = [];
-let dbPontos = [];
 
 window.onload = () => {
     criarModalAlertaDinamico();
@@ -373,8 +372,13 @@ window.onload = () => {
     const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
     if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
 
-    // Apenas formata o CPF na digitação. Sem disparos automáticos.
+    // Máscara de CPF na tela de batida de ponto
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
+        mascaraCPF(e);
+    });
+
+    // Máscara de CPF no campo de Cadastro de Funcionários
+    document.getElementById('cadCPF')?.addEventListener('input', (e) => {
         mascaraCPF(e);
     });
     
@@ -384,7 +388,6 @@ window.onload = () => {
 
 // --- FUNÇÃO DE ENVIO AO SERVIDOR ---
 async function enviarPonto(payload) {
-    // Limpeza imediata do campo de entrada para agilidade visual
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
 
     try {
@@ -436,14 +439,13 @@ async function verificarEGravarPonto() {
     const horaAtual = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const minutosAtual = (agora.getHours() * 60) + agora.getMinutes();
 
-    const registro = dbPontos.find(p => p.CPF === cpf && p.Data === hoje);
+    // Mapeia direto do objeto unificado da escala
     let tipo = "Entrada";
-    
-    if (registro) {
-        if (!registro.Entrada) tipo = "Entrada";
-        else if (!registro.Intervalo) tipo = "Intervalo";
-        else if (!registro.Volta) tipo = "Volta";
-        else if (!registro.Saída) tipo = "Saída";
+    if (colab) {
+        if (!colab.Entrada) tipo = "Entrada";
+        else if (!colab.Intervalo) tipo = "Intervalo";
+        else if (!colab.Volta) tipo = "Volta";
+        else if (!colab.Saída) tipo = "Saída";
         else { 
             exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
             input.value = "";
@@ -451,8 +453,8 @@ async function verificarEGravarPonto() {
         }
     }
 
-    if (registro) {
-        const horariosExistentes = [registro.Entrada, registro.Intervalo, registro.Volta, registro.Saída].filter(Boolean);
+    if (colab) {
+        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(Boolean);
         if (horariosExistentes.length > 0) {
             const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
             const minutosUltima = extrairMinutos(ultimaBatidaStr);
@@ -471,7 +473,7 @@ async function verificarEGravarPonto() {
 
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
-        const diferenca = minutosAtual - minutosEscala;
+        const diferenca = minutosAtual - minutesEscala;
 
         if (diferenca > 5) {
             statusPonto = "Atrasado";
@@ -486,7 +488,7 @@ async function verificarEGravarPonto() {
         }
     } 
     else if (tipo === "Volta") {
-        const minutosIntervalo = extrairMinutos(registro.Intervalo);
+        const minutosIntervalo = extrairMinutos(colab.Intervalo);
         const tempoDeIntervalo = minutosAtual - minutosIntervalo;
         if (tempoDeIntervalo < 40) {
             exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar depois de 40 minutos.", "erro");
@@ -495,7 +497,7 @@ async function verificarEGravarPonto() {
         }
     } 
     else if (tipo === "Saída") {
-        const minutosVolta = extrairMinutos(registro.Volta);
+        const minutosVolta = extrairMinutos(colab.Volta);
         const tempoPosVolta = minutosAtual - minutosVolta;
         if (tempoPosVolta < 90) {
             exibirAlerta("Bloqueado", "Ir para casa (saída) não pode ser 1h30 após volta intervalo.", "erro");
@@ -519,27 +521,23 @@ async function verificarEGravarPonto() {
     await enviarPonto(payload);
 }
 
-// Vincula a ação do seu botão de confirmação visual
 function verificarCPFAdmin() {
     verificarEGravarPonto();
 }
 
-// --- CARREGAMENTO POR JSONP ---
+// --- CARREGAMENTO CENTRALIZADO EM UMA REQUISIÇÃO ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
     sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
     sE.className = 'jsonp-temp';
     document.body.appendChild(sE);
-
-    const sP = document.createElement('script');
-    sP.src = `${API_URL}?tipo=ponto&callback=retornoPontos&t=${Date.now()}`;
-    sP.className = 'jsonp-temp';
-    document.body.appendChild(sP);
 }
 
-function retornoEscalas(dados) { dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
-function retornoPontos(dados) { dbPontos = dados.map((item, i) => ({ ...item, _index: i + 2 })); renderAdmin(); }
+function retornoEscalas(dados) { 
+    dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); 
+    renderAdmin(); 
+}
 
 function renderAdmin() {
     const filtro = document.getElementById('filtroDataAdmin')?.value;
@@ -547,12 +545,12 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
+    // Filtra as escalas do dia selecionado
     const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const ptsDia = dbPontos.filter(p => p.Data === filtro);
-    const cpfsPresentes = ptsDia.filter(p => p.Entrada).map(p => p.CPF);
+    const cpfsPresentes = escDia.filter(e => e.Entrada).map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
-        if (cpfsPresentes.includes(e.CPF)) return false;
+        if (e.Entrada) return false;
         const [h, m] = e.Hora.split(':').map(Number);
         return (minutosAgora > (h * 60 + m + 10));
     });
@@ -561,27 +559,39 @@ function renderAdmin() {
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
-    // Atualização dinâmica dos menus Hover ao passar o mouse
     const listEscalados = document.getElementById('listEscalados');
     if(listEscalados) {
         listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
     }
     const listPresentes = document.getElementById('listPresentes');
     if(listPresentes) {
-        listPresentes.innerHTML = ptsDia.filter(p => p.Entrada).map(p => `<div>${p.Nome} - ${p.Entrada}</div>`).join('') || 'Ninguém';
+        listPresentes.innerHTML = escDia.filter(e => e.Entrada).map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
     }
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) {
         listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
     }
 
+    // --- TABELA DE ESCALADOS ALINHADA ---
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
-        <tr><td class="text-start ps-4"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td><td>${e.Hora}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td></tr>
-    `).join('') || '<tr><td colspan="3">Nenhuma escala para este dia.</td></tr>';
+        <tr>
+            <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
+            <td class="text-center align-middle">${e.Hora}</td>
+            <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td>
+        </tr>
+    `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
 
-    document.getElementById('tabStatus').innerHTML = ptsDia.map(p => `
-        <tr><td class="text-start ps-4"><strong>${p.Nome}</strong></td><td>${p.Entrada||'--'}</td><td>${p.Intervalo||'--'}</td><td>${p.Volta||'--'}</td><td>${p.Saída||'--'}</td><td><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td></tr>
-    `).join('') || '<tr><td colspan="6">Nenhum ponto registrado.</td></tr>';
+    // --- TABELA DE BATIDAS DE PONTO ALINHADA ---
+    document.getElementById('tabStatus').innerHTML = escDia.map(e => `
+        <tr>
+            <td class="text-start ps-3 align-middle"><strong>${e.Nome}</strong></td>
+            <td class="text-center align-middle">${e.Entrada||'--'}</td>
+            <td class="text-center align-middle">${e.Intervalo||'--'}</td>
+            <td class="text-center align-middle">${e.Volta||'--'}</td>
+            <td class="text-center align-middle">${e.Saída||'--'}</td>
+            <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
+        </tr>
+    `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado.</td></tr>';
 }
 
 function abrirModalCad() {
