@@ -413,7 +413,6 @@ async function enviarPonto(payload) {
     }
 }
 
-// --- LÓGICA DE PONTO COM TOLERÂNCIA, SEQUÊNCIA E REGRAS DE TEMPO REESTABELECIDAS ---
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
@@ -452,7 +451,6 @@ async function verificarEGravarPonto() {
         return !valor || valor.trim() === "" || valor.trim() === "--";
     };
 
-    // Identifica qual o tipo da batida atual
     let tipo = "Entrada";
     if (colab) {
         if (estaVazio(colab.Entrada)) tipo = "Entrada";
@@ -466,7 +464,7 @@ async function verificarEGravarPonto() {
         }
     }
 
-    // Trava de 40 minutos para re-batidas acidentais em qualquer período
+    // Trava de re-batida inferior a 40 minutos
     if (colab) {
         const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
         if (horariosExistentes.length > 0) {
@@ -485,7 +483,7 @@ async function verificarEGravarPonto() {
     let statusIcone = "sucesso";
     let msgModal = `registrou sua ${tipo} com sucesso às ${horaAtual}.`;
 
-    // Regra de tolerância de 5 minutos (Entrada)
+    // Tolerância de 5 minutos (Entrada)
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
         const diferenca = minutosAtual - minutosEscala;
@@ -504,7 +502,7 @@ async function verificarEGravarPonto() {
             msgModal = `Entrada registrada pontualmente às ${horaAtual}.`;
         }
     } 
-    // Regra do Intervalo (Mínimo de 40 minutos fora)
+    // Validação de intervalo (mínimo de 40 minutos)
     else if (tipo === "Volta") {
         const minutosIntervalo = extrairMinutos(colab.Intervalo);
         const tempoDeIntervalo = minutosAtual - minutosIntervalo;
@@ -514,7 +512,7 @@ async function verificarEGravarPonto() {
             return;
         }
     } 
-    // Regra da Saída (Mínimo de 1h30 após retornar do intervalo)
+    // Validação de saída (mínimo 1h30 pós-intervalo)
     else if (tipo === "Saída") {
         const minutosVolta = extrairMinutos(colab.Volta);
         const tempoPosVolta = minutosAtual - minutosVolta;
@@ -528,6 +526,7 @@ async function verificarEGravarPonto() {
     const payload = {
         acao: "registrarPonto",
         data: {
+            Linha: colab.Linha, // Envia o número exato da linha física da planilha
             Nome: colab.Nome,
             CPF: cpf,
             Data: String(hoje),
@@ -553,7 +552,7 @@ function carregarDados() {
 }
 
 function retornoEscalas(dados) { 
-    dbEscalas = dados.map((item, i) => ({ ...item, _index: i + 2 })); 
+    dbEscalas = dados; 
     renderAdmin(); 
 }
 
@@ -565,7 +564,7 @@ function renderAdmin() {
 
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     
-    // Filtra apenas linhas que de fato já registraram ponto (possuem entrada válida)
+    // Filtra pontos reais baseados em entradas existentes na data filtrada
     const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
@@ -592,16 +591,16 @@ function renderAdmin() {
         listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
     }
 
-    // --- TABELA DE ESCALADOS ALINHADA ---
+    // --- TABELA DE ESCALADOS ---
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr>
             <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
             <td class="text-center align-middle">${e.Hora}</td>
-            <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e._index})"></i></td>
+            <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
         </tr>
     `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
 
-    // --- TABELA DE REGISTRO DE PONTO EXIBIDA NO PAINEL ADM ---
+    // --- TABELA DE REGISTRO DE PONTO (PAINEL ADM) ---
     document.getElementById('tabStatus').innerHTML = ptsDiaReal.map(p => `
         <tr>
             <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
