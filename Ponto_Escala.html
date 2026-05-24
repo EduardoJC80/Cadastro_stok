@@ -384,7 +384,23 @@ window.onload = () => {
     
     carregarDados();
     setInterval(renderAdmin, 60000);
+
+    // --- ATIVA O INPUT DE CPF NO INÍCIO ---
+    focarInputCPF();
+
+    // Reativa o foco ao fechar qualquer modal que possa tirar o cursor da tela
+    document.getElementById('modalAlertaDinamico')?.addEventListener('hidden.bs.modal', focarInputCPF);
 };
+
+// Auxiliar para garantir o foco no input de CPF principal
+function focarInputCPF() {
+    setTimeout(() => {
+        const input = document.getElementById('cpfIn');
+        if (input && document.getElementById('screenPonto').classList.contains('active')) {
+            input.focus();
+        }
+    }, 200);
+}
 
 // --- FUNÇÃO DE ENVIO AO SERVIDOR ---
 async function enviarPonto(payload) {
@@ -439,7 +455,6 @@ async function verificarEGravarPonto() {
     const horaAtual = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const minutosAtual = (agora.getHours() * 60) + agora.getMinutes();
 
-    // Mapeia direto do objeto unificado da escala
     let tipo = "Entrada";
     if (colab) {
         if (!colab.Entrada) tipo = "Entrada";
@@ -459,7 +474,7 @@ async function verificarEGravarPonto() {
             const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
             const minutosUltima = extrairMinutos(ultimaBatidaStr);
             
-            if ((minutosAtual - minutosUltima) < 40) {
+            if ((minutosAtual - minutesUltima) < 40) {
                 exibirAlerta("Aviso", `${colab.Nome} já registrou ponto às ${ultimaBatidaStr}`, "info");
                 input.value = "";
                 return;
@@ -473,7 +488,7 @@ async function verificarEGravarPonto() {
 
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
-        const diferenca = minutosAtual - minutesEscala;
+        const diferenca = minutosAtual - minutosEscala;
 
         if (diferenca > 5) {
             statusPonto = "Atrasado";
@@ -525,7 +540,7 @@ function verificarCPFAdmin() {
     verificarEGravarPonto();
 }
 
-// --- CARREGAMENTO CENTRALIZADO EM UMA REQUISIÇÃO ---
+// --- CARREGAMENTO CENTRALIZADO IN JET ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -545,12 +560,14 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    // Filtra as escalas do dia selecionado
     const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const cpfsPresentes = escDia.filter(e => e.Entrada).map(e => e.CPF);
+    
+    // CORREÇÃO: Filtra apenas quem REALMENTE registrou alguma batida no dia (possui Entrada preenchida)
+    const ptsDiaReal = escDia.filter(e => e.Entrada && e.Entrada.trim() !== "" && e.Entrada !== "--");
+    const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
-        if (e.Entrada) return false;
+        if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada !== "--") return false;
         const [h, m] = e.Hora.split(':').map(Number);
         return (minutosAgora > (h * 60 + m + 10));
     });
@@ -565,7 +582,7 @@ function renderAdmin() {
     }
     const listPresentes = document.getElementById('listPresentes');
     if(listPresentes) {
-        listPresentes.innerHTML = escDia.filter(e => e.Entrada).map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
+        listPresentes.innerHTML = ptsDiaReal.map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
     }
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) {
@@ -581,17 +598,17 @@ function renderAdmin() {
         </tr>
     `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
 
-    // --- TABELA DE BATIDAS DE PONTO ALINHADA ---
-    document.getElementById('tabStatus').innerHTML = escDia.map(e => `
+    // --- CORREÇÃO: TABELA DE REGISTRO DE PONTO (MOSTRA APENAS AS BATIDAS REAIS E EXIBE AS HORAS) ---
+    document.getElementById('tabStatus').innerHTML = ptsDiaReal.map(p => `
         <tr>
-            <td class="text-start ps-3 align-middle"><strong>${e.Nome}</strong></td>
-            <td class="text-center align-middle">${e.Entrada||'--'}</td>
-            <td class="text-center align-middle">${e.Intervalo||'--'}</td>
-            <td class="text-center align-middle">${e.Volta||'--'}</td>
-            <td class="text-center align-middle">${e.Saída||'--'}</td>
+            <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong></td>
+            <td class="text-center align-middle">${p.Entrada || '--'}</td>
+            <td class="text-center align-middle">${p.Intervalo || '--'}</td>
+            <td class="text-center align-middle">${p.Volta || '--'}</td>
+            <td class="text-center align-middle">${p.Saída || '--'}</td>
             <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
         </tr>
-    `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado.</td></tr>';
+    `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado para este dia.</td></tr>';
 }
 
 function abrirModalCad() {
@@ -700,6 +717,9 @@ function sairAdmin() {
     document.getElementById('screenAdmin').classList.remove('active');
     document.getElementById('screenPonto').classList.add('active');
     document.getElementById('btnSairHeader').style.display = 'none';
+    
+    // Devolve o foco instantaneamente ao voltar à tela inicial de ponto
+    focarInputCPF();
 }
 </script>
 </body>
