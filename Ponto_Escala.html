@@ -366,7 +366,6 @@ window.onload = () => {
     
     // Configura e renderiza a data atual por extenso no topo (#date-full)
     const dataHoje = new Date();
-    const opcoesData = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     const elementoDataFull = document.getElementById('date-full');
     if (elementoDataFull) {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -395,7 +394,9 @@ async function enviarPonto(payload) {
             body: JSON.stringify(payload)
         });
         document.getElementById('cpfIn').value = "";
-        setTimeout(carregarDados, 2000); 
+        
+        // Recarrega os dados imediatamente na memória do script para atualizar a tela sem F5
+        carregarDados(); 
     } catch (e) {
         exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
     }
@@ -468,7 +469,7 @@ async function verificarEGravarPonto() {
 
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
-        const diferenca = minutosAtual - minutesEscala;
+        const diferenca = minutosAtual - minutosEscala;
 
         if (diferenca > 5) {
             statusPonto = "Atrasado";
@@ -506,7 +507,7 @@ async function verificarEGravarPonto() {
         data: {
             Nome: colab.Nome,
             CPF: cpf,
-            Data: hoje,
+            Data: String(hoje),
             Hora: horaAtual,
             Tipo: tipo
         }
@@ -635,14 +636,28 @@ async function salvarEscala(btn) {
     const d = {
         Nome: document.getElementById('cadNome').value,
         CPF: document.getElementById('cadCPF').value,
-        Data: document.getElementById('cadData').value,
+        Data: String(document.getElementById('cadData').value), // Força o envio da data como String pura
         Hora: document.getElementById('cadHora').value
     };
     if(!d.Nome || d.CPF.length < 14 || !d.Data || !d.Hora) return exibirAlerta("Erro", "Preencha todos os campos corretamente.", "erro");
+    
+    // Altera o estado do botão para feedback visual
+    const textoOriginal = btn.innerText;
     btn.disabled = true;
+    btn.innerText = "Cadastrando funcionário...";
+
     await enviarPonto({ acao: "salvarEscala", data: d });
-    bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+    
+    // Restaura o botão e fecha o modal
+    btn.innerText = textoOriginal;
     btn.disabled = false;
+    bootstrap.Modal.getInstance(document.getElementById('modalCad')).hide();
+    
+    // Limpa os campos do formulário para o próximo uso
+    document.getElementById('cadNome').value = "";
+    document.getElementById('cadCPF').value = "";
+    document.getElementById('cadData').value = "";
+    document.getElementById('cadHora').value = "";
 }
 
 async function deletarEscala(index) {
