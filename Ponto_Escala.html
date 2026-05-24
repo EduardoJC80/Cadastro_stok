@@ -603,6 +603,11 @@ function atualizarRelogio() {
 }
 
 // Funções Admin
+function abrirModalCadastro() {
+    const mCad = document.getElementById('modalCad');
+    if(mCad) new bootstrap.Modal(mCad).show();
+}
+
 async function salvarEscala(btn) {
     const d = {
         Nome: document.getElementById('cadNome').value,
