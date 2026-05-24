@@ -413,6 +413,7 @@ async function enviarPonto(payload) {
     }
 }
 
+// --- VALIDAÇÃO E LÓGICA DE SEQUÊNCIA DE PONTOS CORRIGIDA ---
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
@@ -438,7 +439,7 @@ async function verificarEGravarPonto() {
     }
 
     const extrairMinutos = (horaStr) => {
-        if (!horaStr || horaStr === "--") return 0;
+        if (!horaStr || horaStr === "" || horaStr === "--") return 0;
         const [h, m] = horaStr.split(':').map(Number);
         return (h * 60) + m;
     };
@@ -447,14 +448,23 @@ async function verificarEGravarPonto() {
     const horaAtual = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const minutosAtual = (agora.getHours() * 60) + agora.getMinutes();
 
-    // --- LÓGICA DE SEQUÊNCIA DE PONTOS CORRIGIDA ---
+    // Função auxiliar para checar se uma célula está realmente limpa/vazia
+    const estaVazio = (valor) => {
+        return !valor || valor.trim() === "" || valor.trim() === "--";
+    };
+
+    // LÓGICA CORRIGIDA: Identifica corretamente o próximo ponto sem travar no "--"
     let tipo = "Entrada";
     if (colab) {
-        if (!colab.Entrada || colab.Entrada === "" || colab.Entrada === "--") tipo = "Entrada";
-        else if (!colab.Intervalo || colab.Intervalo === "" || colab.Intervalo === "--") tipo = "Intervalo";
-        else if (!colab.Volta || colab.Volta === "" || colab.Volta === "--") tipo = "Volta";
-        else if (!colab.Saída || colab.Saída === "" || colab.Saída === "--") tipo = "Saída";
-        else { 
+        if (estaVazio(colab.Entrada)) {
+            tipo = "Entrada";
+        } else if (estaVazio(colab.Intervalo)) {
+            tipo = "Intervalo";
+        } else if (estaVazio(colab.Volta)) {
+            tipo = "Volta";
+        } else if (estaVazio(colab.Saída)) {
+            tipo = "Saída";
+        } else { 
             exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
             input.value = "";
             return; 
@@ -462,7 +472,7 @@ async function verificarEGravarPonto() {
     }
 
     if (colab) {
-        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => h && h !== "" && h !== "--");
+        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
         if (horariosExistentes.length > 0) {
             const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
             const minutosUltima = extrairMinutos(ultimaBatidaStr);
@@ -506,7 +516,7 @@ async function verificarEGravarPonto() {
     } 
     else if (tipo === "Saída") {
         const minutosVolta = extrairMinutos(colab.Volta);
-        const tempoPosVolta = minutesAtual - minutosVolta;
+        const tempoPosVolta = minutosAtual - minutosVolta;
         if (tempoPosVolta < 90) {
             exibirAlerta("Bloqueado", "A saída para casa não pode ser registrada antes de 1h30 após a volta do intervalo.", "erro");
             input.value = "";
@@ -554,13 +564,12 @@ function renderAdmin() {
 
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     
-    // Filtra quem de fato realizou batidas nas colunas de ponto associadas
-    const ptsDiaReal = dbEscalas.filter(e => e.PontoData === filtro && e.Entrada && e.Entrada !== "" && e.Entrada !== "--");
+    // Filtra quem de fato realizou batidas reais (Entrada preenchida e diferente de vazio/"--")
+    const ptsDiaReal = dbEscalas.filter(e => e.PontoData === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.PontoCPF);
 
     const faltasEfetivas = escDia.filter(e => {
-        // Se tem entrada preenchida nas colunas de ponto, não é falta
-        if (e.Entrada && e.Entrada !== "" && e.Entrada !== "--") return false;
+        if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--") return false;
         const [h, m] = e.Hora.split(':').map(Number);
         return (minutosAgora > (h * 60 + m + 10));
     });
@@ -591,7 +600,7 @@ function renderAdmin() {
         </tr>
     `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
 
-    // --- EXIBIÇÃO CORRETA DOS PONTOS BATIDOS NO PAINEL ADM ---
+    // --- TABELA DE REGISTRO DE PONTO ALINHADA ---
     document.getElementById('tabStatus').innerHTML = ptsDiaReal.map(p => `
         <tr>
             <td class="text-start ps-3 align-middle"><strong>${p.PontoNome}</strong><br><small class="text-muted" style="font-size:11px;">${p.PontoCPF}</small></td>
