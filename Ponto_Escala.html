@@ -372,27 +372,21 @@ window.onload = () => {
     const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
     if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
 
-    // Máscara de CPF na tela de batida de ponto
     document.getElementById('cpfIn')?.addEventListener('input', (e) => {
         mascaraCPF(e);
     });
 
-    // Máscara de CPF no campo de Cadastro de Funcionários
     document.getElementById('cadCPF')?.addEventListener('input', (e) => {
         mascaraCPF(e);
     });
     
     carregarDados();
     setInterval(renderAdmin, 60000);
-
-    // --- ATIVA O INPUT DE CPF NO INÍCIO ---
     focarInputCPF();
 
-    // Reativa o foco ao fechar qualquer modal que possa tirar o cursor da tela
     document.getElementById('modalAlertaDinamico')?.addEventListener('hidden.bs.modal', focarInputCPF);
 };
 
-// Auxiliar para garantir o foco no input de CPF principal
 function focarInputCPF() {
     setTimeout(() => {
         const input = document.getElementById('cpfIn');
@@ -402,7 +396,6 @@ function focarInputCPF() {
     }, 200);
 }
 
-// --- FUNÇÃO DE ENVIO AO SERVIDOR ---
 async function enviarPonto(payload) {
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
 
@@ -420,7 +413,6 @@ async function enviarPonto(payload) {
     }
 }
 
-// --- VALIDAÇÃO E FILTROS DE PONTO ---
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
@@ -446,7 +438,7 @@ async function verificarEGravarPonto() {
     }
 
     const extrairMinutos = (horaStr) => {
-        if (!horaStr) return 0;
+        if (!horaStr || horaStr === "--") return 0;
         const [h, m] = horaStr.split(':').map(Number);
         return (h * 60) + m;
     };
@@ -455,12 +447,13 @@ async function verificarEGravarPonto() {
     const horaAtual = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const minutosAtual = (agora.getHours() * 60) + agora.getMinutes();
 
+    // --- LÓGICA DE SEQUÊNCIA DE PONTOS CORRIGIDA ---
     let tipo = "Entrada";
     if (colab) {
-        if (!colab.Entrada) tipo = "Entrada";
-        else if (!colab.Intervalo) tipo = "Intervalo";
-        else if (!colab.Volta) tipo = "Volta";
-        else if (!colab.Saída) tipo = "Saída";
+        if (!colab.Entrada || colab.Entrada === "" || colab.Entrada === "--") tipo = "Entrada";
+        else if (!colab.Intervalo || colab.Intervalo === "" || colab.Intervalo === "--") tipo = "Intervalo";
+        else if (!colab.Volta || colab.Volta === "" || colab.Volta === "--") tipo = "Volta";
+        else if (!colab.Saída || colab.Saída === "" || colab.Saída === "--") tipo = "Saída";
         else { 
             exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
             input.value = "";
@@ -469,12 +462,12 @@ async function verificarEGravarPonto() {
     }
 
     if (colab) {
-        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(Boolean);
+        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => h && h !== "" && h !== "--");
         if (horariosExistentes.length > 0) {
             const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
             const minutosUltima = extrairMinutos(ultimaBatidaStr);
             
-            if ((minutosAtual - minutesUltima) < 40) {
+            if ((minutosAtual - minutosUltima) < 40) {
                 exibirAlerta("Aviso", `${colab.Nome} já registrou ponto às ${ultimaBatidaStr}`, "info");
                 input.value = "";
                 return;
@@ -506,16 +499,16 @@ async function verificarEGravarPonto() {
         const minutosIntervalo = extrairMinutos(colab.Intervalo);
         const tempoDeIntervalo = minutosAtual - minutosIntervalo;
         if (tempoDeIntervalo < 40) {
-            exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar depois de 40 minutos.", "erro");
+            exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar antes de 40 minutos.", "erro");
             input.value = "";
             return;
         }
     } 
     else if (tipo === "Saída") {
         const minutosVolta = extrairMinutos(colab.Volta);
-        const tempoPosVolta = minutosAtual - minutosVolta;
+        const tempoPosVolta = minutesAtual - minutosVolta;
         if (tempoPosVolta < 90) {
-            exibirAlerta("Bloqueado", "Ir para casa (saída) não pode ser 1h30 após volta intervalo.", "erro");
+            exibirAlerta("Bloqueado", "A saída para casa não pode ser registrada antes de 1h30 após a volta do intervalo.", "erro");
             input.value = "";
             return;
         }
@@ -540,7 +533,6 @@ function verificarCPFAdmin() {
     verificarEGravarPonto();
 }
 
-// --- CARREGAMENTO CENTRALIZADO IN JET ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -562,12 +554,13 @@ function renderAdmin() {
 
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     
-    // CORREÇÃO: Filtra apenas quem REALMENTE registrou alguma batida no dia (possui Entrada preenchida)
-    const ptsDiaReal = escDia.filter(e => e.Entrada && e.Entrada.trim() !== "" && e.Entrada !== "--");
-    const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
+    // Filtra quem de fato realizou batidas nas colunas de ponto associadas
+    const ptsDiaReal = dbEscalas.filter(e => e.PontoData === filtro && e.Entrada && e.Entrada !== "" && e.Entrada !== "--");
+    const cpfsPresentes = ptsDiaReal.map(e => e.PontoCPF);
 
     const faltasEfetivas = escDia.filter(e => {
-        if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada !== "--") return false;
+        // Se tem entrada preenchida nas colunas de ponto, não é falta
+        if (e.Entrada && e.Entrada !== "" && e.Entrada !== "--") return false;
         const [h, m] = e.Hora.split(':').map(Number);
         return (minutosAgora > (h * 60 + m + 10));
     });
@@ -582,7 +575,7 @@ function renderAdmin() {
     }
     const listPresentes = document.getElementById('listPresentes');
     if(listPresentes) {
-        listPresentes.innerHTML = ptsDiaReal.map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
+        listPresentes.innerHTML = ptsDiaReal.map(e => `<div>${e.PontoNome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
     }
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) {
@@ -598,10 +591,10 @@ function renderAdmin() {
         </tr>
     `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
 
-    // --- CORREÇÃO: TABELA DE REGISTRO DE PONTO (MOSTRA APENAS AS BATIDAS REAIS E EXIBE AS HORAS) ---
+    // --- EXIBIÇÃO CORRETA DOS PONTOS BATIDOS NO PAINEL ADM ---
     document.getElementById('tabStatus').innerHTML = ptsDiaReal.map(p => `
         <tr>
-            <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong></td>
+            <td class="text-start ps-3 align-middle"><strong>${p.PontoNome}</strong><br><small class="text-muted" style="font-size:11px;">${p.PontoCPF}</small></td>
             <td class="text-center align-middle">${p.Entrada || '--'}</td>
             <td class="text-center align-middle">${p.Intervalo || '--'}</td>
             <td class="text-center align-middle">${p.Volta || '--'}</td>
@@ -718,7 +711,6 @@ function sairAdmin() {
     document.getElementById('screenPonto').classList.add('active');
     document.getElementById('btnSairHeader').style.display = 'none';
     
-    // Devolve o foco instantaneamente ao voltar à tela inicial de ponto
     focarInputCPF();
 }
 </script>
