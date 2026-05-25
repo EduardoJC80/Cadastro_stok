@@ -355,7 +355,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbx9aF992l8G3IvPNQOJYSPUBnLUcCP64QBMtSyHTwBIemE0qYDtGQa6Vgu0bM_u_jc3LA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwQg7TLPur-MnWTz-syN-_Lx9tOVMbhIhVilHHkfAATLaHk7c98A19Rs1DFAp7XxMi8/exec";
 let dbEscalas = [];
 
 window.onload = () => {
@@ -407,6 +407,7 @@ async function enviarPonto(payload) {
             body: JSON.stringify(payload)
         });
         
+        // Recarrega os dados para sincronizar com as duas novas tabelas do Apps Script
         carregarDados(); 
     } catch (e) {
         exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
@@ -430,6 +431,7 @@ async function verificarEGravarPonto() {
         return;
     }
 
+    // Busca o colaborador na escala do dia corrente
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     if (!colab) {
         exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
@@ -451,31 +453,28 @@ async function verificarEGravarPonto() {
         return !valor || valor.trim() === "" || valor.trim() === "--";
     };
 
+    // Identifica qual a próxima batida sequencial baseada no cruzamento de dados feito no back-end
     let tipo = "Entrada";
-    if (colab) {
-        if (estaVazio(colab.Entrada)) tipo = "Entrada";
-        else if (estaVazio(colab.Intervalo)) tipo = "Intervalo";
-        else if (estaVazio(colab.Volta)) tipo = "Volta";
-        else if (estaVazio(colab.Saída)) tipo = "Saída";
-        else { 
-            exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
-            input.value = "";
-            return; 
-        }
+    if (estaVazio(colab.Entrada)) tipo = "Entrada";
+    else if (estaVazio(colab.Intervalo)) tipo = "Intervalo";
+    else if (estaVazio(colab.Volta)) tipo = "Volta";
+    else if (estaVazio(colab.Saída)) tipo = "Saída";
+    else { 
+        exibirAlerta("Limite Atingido", "Todos os pontos já foram registrados hoje.", "info"); 
+        input.value = "";
+        return; 
     }
 
-    // Trava de re-batida inferior a 40 minutos
-    if (colab) {
-        const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
-        if (horariosExistentes.length > 0) {
-            const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
-            const minutosUltima = extrairMinutos(ultimaBatidaStr);
-            
-            if ((minutosAtual - minutosUltima) < 40) {
-                exibirAlerta("Aviso", `${colab.Nome} do CPF ${cpf} já registrou a ${horariosExistentes.length === 1 ? 'entrada' : 'última batida'} às ${ultimaBatidaStr}`, "info");
-                input.value = "";
-                return;
-            }
+    // Trava de segurança contra batidas acidentais seguidas (menos de 40 minutos)
+    const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
+    if (horariosExistentes.length > 0) {
+        const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
+        const minutosUltima = extrairMinutos(ultimaBatidaStr);
+        
+        if ((minutosAtual - minutosUltima) < 40) {
+            exibirAlerta("Aviso", `${colab.Nome} já registrou a ${horariosExistentes.length === 1 ? 'entrada' : 'última batida'} às ${ultimaBatidaStr}`, "info");
+            input.value = "";
+            return;
         }
     }
 
@@ -483,7 +482,7 @@ async function verificarEGravarPonto() {
     let statusIcone = "sucesso";
     let msgModal = `registrou sua ${tipo} com sucesso às ${horaAtual}.`;
 
-    // Tolerância de 5 minutos (Entrada)
+    // Tolerância da Entrada (5 minutos)
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
         const diferenca = minutosAtual - minutosEscala;
@@ -502,7 +501,7 @@ async function verificarEGravarPonto() {
             msgModal = `Entrada registrada pontualmente às ${horaAtual}.`;
         }
     } 
-    // Validação de intervalo (mínimo de 40 minutos)
+    // Mínimo de 40 minutos de Intervalo
     else if (tipo === "Volta") {
         const minutosIntervalo = extrairMinutos(colab.Intervalo);
         const tempoDeIntervalo = minutosAtual - minutosIntervalo;
@@ -512,21 +511,21 @@ async function verificarEGravarPonto() {
             return;
         }
     } 
-    // Validação de saída (mínimo 1h30 pós-intervalo)
+    // Mínimo de 1h30 de trabalho pós-intervalo para poder sair
     else if (tipo === "Saída") {
-        const minutosVolta = extrairMinutos(colab.Volta);
-        const tempoPosVolta = minutosAtual - minutosVolta;
+        const minutesVolta = extrairMinutos(colab.Volta);
+        const tempoPosVolta = minutosAtual - minutesVolta;
         if (tempoPosVolta < 90) {
-            exibirAlerta("Bloqueado", "Ir para casa (saída) não pode ser registrado antes de 1h30 após a volta do intervalo.", "erro");
+            exibirAlerta("Bloqueado", "A saída para casa não pode ser registrada antes de 1h30 após a volta do intervalo.", "erro");
             input.value = "";
             return;
         }
     }
 
+    // Payload pronto para a tabela de histórico de batidas lineares ('RegistroPonto')
     const payload = {
         acao: "registrarPonto",
         data: {
-            Linha: colab.Linha, // Envia o número exato da linha física da planilha
             Nome: colab.Nome,
             CPF: cpf,
             Data: String(hoje),
@@ -564,7 +563,7 @@ function renderAdmin() {
 
     const escDia = dbEscalas.filter(e => e.Data === filtro);
     
-    // Filtra pontos reais baseados em entradas existentes na data filtrada
+    // Filtra pontos do dia para o sumário superior
     const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
