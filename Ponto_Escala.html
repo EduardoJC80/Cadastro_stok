@@ -445,7 +445,7 @@ async function enviarPonto(payload) {
             body: JSON.stringify(payload)
         });
         
-        // Exibe o carregando na tela
+        // Exibe o carregando na tela imediatamente
         mostrarLoader();
         
         // Pausa de segurança para o banco consolidar antes de ler de volta
@@ -580,11 +580,10 @@ function verificarCPFAdmin() {
 }
 
 function carregarDados() {
-    // Remove scripts antigos para limpar a árvore do DOM
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     
     const sE = document.createElement('script');
-    // 'v=Date.now()' injeta um parâmetro mutável eliminando o cache de resposta local
+    // O Timestamp dinâmico 'v=Date.now()' destrói o cache do navegador e força a leitura real
     sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&v=${Date.now()}`;
     sE.className = 'jsonp-temp';
     
@@ -594,17 +593,38 @@ function carregarDados() {
 function retornoEscalas(dados) { 
     dbEscalas = dados; 
     renderAdmin(); 
-    esconderLoader(); // Fecha o carregando somente quando os dados já estão renderizados
+    esconderLoader(); // O loader fecha imediatamente após a tela ser remontada com os dados novos
 }
 
 function renderAdmin() {
-    const filtro = document.getElementById('filtroDataAdmin')?.value;
+    let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
+    
+    // Normaliza o filtro do painel para o formato brasileiro DD/MM/AAAA se vier com traços
+    if (filtro.includes('-')) {
+        const partes = filtro.split('-');
+        filtro = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
+    // --- HELPER DE COMPARAÇÃO ROBUSTA DE DATAS ---
+    const normalizarDataParaBR = (dataStr) => {
+        if (!dataStr) return "";
+        let d = String(dataStr).trim();
+        if (d.includes('-')) {
+            const partes = d.split('-');
+            if (partes[0].length === 4) { // Se for AAAA-MM-DD
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            }
+        }
+        return d;
+    };
+
+    // Cruzamento e filtragem estruturada usando o normalizador
+    const escDia = dbEscalas.filter(e => normalizarDataParaBR(e.Data) === filtro);
+    const ptsDiaReal = dbEscalas.filter(e => normalizarDataParaBR(e.Data) === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
