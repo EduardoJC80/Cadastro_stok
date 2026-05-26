@@ -382,7 +382,7 @@ window.onload = () => {
     document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
     
     carregarDados();
-    setInterval(renderAdmin, 60000); // Atualiza os contadores e listas a cada 1 minuto
+    setInterval(renderAdmin, 60000); // Sincroniza painel automaticamente a cada 1 minuto
     focarInputCPF();
 
     document.getElementById('modalAlertaDinamico')?.addEventListener('hidden.bs.modal', focarInputCPF);
@@ -523,7 +523,6 @@ async function verificarEGravarPonto() {
         }
     }
 
-    // Payload estruturado apontando os dados diretamente à aba RegistroPonto
     const payload = {
         aba: "RegistroPonto",
         acao: "registrarPonto",
@@ -542,19 +541,27 @@ async function verificarEGravarPonto() {
 
 function verificarCPFAdmin() { verificarEGravarPonto(); }
 
-// Aciona a requisição unificada via script JSONP externo
+// CORREÇÃO CRÍTICA: Garante que a injeção do Script JSONP funcione limpando chamadas pendentes
 function carregarDados() {
-    document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
+    const scriptsAntigos = document.querySelectorAll('.jsonp-temp');
+    scriptsAntigos.forEach(s => s.remove());
+
     const sE = document.createElement('script');
     sE.src = `${API_URL}?callback=retornoEscalas&t=${Date.now()}`;
     sE.className = 'jsonp-temp';
+    
+    sE.onerror = () => {
+        console.error("Falha ao carregar dados via JSONP.");
+        exibirAlerta("Erro de Conexão", "Não foi possível sincronizar com o banco de dados.", "erro");
+    };
+
     document.body.appendChild(sE);
 }
 
+// Captura a resposta global enviada pelo Google Apps Script
 function retornoEscalas(dados) { 
     if (!dados || !Array.isArray(dados)) {
-        console.error("Erro: O banco de dados não retornou um formato válido.", dados);
-        exibirAlerta("Erro de Banco", "Os dados retornados da planilha estão corrompidos ou vazios.", "erro");
+        console.error("Erro: Dados corrompidos ou em formato inválido.", dados);
         return; 
     }
     dbEscalas = dados; 
@@ -566,7 +573,7 @@ function renderAdmin() {
     let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
 
-    // Converte datas vindas de seletores padrões de 'date' (AAAA-MM-DD -> DD/MM/AAAA)
+    // Trata e limpa o formato de datas vindas do seletor padrão (AAAA-MM-DD -> DD/MM/AAAA)
     if (filtro.includes('-')) {
         filtro = filtro.split('-').reverse().join('/');
     }
@@ -574,10 +581,10 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    // Filtros limpos baseados na data selecionada
+    // Filtros normalizados eliminando espaços em branco ocultos
     const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro.trim());
     
-    // Lista apenas quem já fez o ponto inicial (Entrada) na aba RegistroPonto
+    // Lista apenas funcionários que já registraram pelo menos o ponto de Entrada (Aba RegistroPonto)
     const ptsDiaReal = dbEscalas.filter(e => {
         return String(e.Data).trim() === filtro.trim() && 
                e.Entrada && 
@@ -586,7 +593,7 @@ function renderAdmin() {
     });
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
-    // Identificação de faltas (Mais de 10 min de atraso sem registrar Entrada)
+    // Mapeamento automático de faltas do dia
     const faltasEfetivas = escDia.filter(e => {
         if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--") return false;
         if (!e.Hora || e.Hora === "--") return false;
@@ -594,6 +601,7 @@ function renderAdmin() {
         return (minutosAgora > (h * 60 + m + 10));
     });
 
+    // Atualização segura dos painéis numéricos de contagem
     if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
@@ -703,7 +711,7 @@ function atualizarRelogio() {
     if(clock) clock.innerText = new Date().toLocaleTimeString('pt-BR');
 }
 
-// Botão "Nova Escala" -> Registra os dados diretamente na aba Funcionarios
+// Botão "Nova Escala" -> Grava na aba Funcionarios
 async function salvarEscala(btn) {
     const d = {
         Nome: document.getElementById('cadNome').value,
