@@ -397,7 +397,7 @@ function focarInputCPF() {
     }, 200);
 }
 
-// --- FUNÇÕES DO CARREGANDO (LOADER) ---
+// --- FUNÇÕES DO CARREGANDO (LOADER DINÂMICO) ---
 function criarLoaderDinamico() {
     if (document.getElementById('appLoaderGlobal')) return;
     const loaderHtml = `
@@ -445,10 +445,10 @@ async function enviarPonto(payload) {
             body: JSON.stringify(payload)
         });
         
-        // Exibe a tela de carregamento imediatamente após o término do POST
+        // Exibe o carregando na tela
         mostrarLoader();
         
-        // Aguarda o Sheets consolidar antes de disparar o script de leitura de volta
+        // Pausa de segurança para o banco consolidar antes de ler de volta
         setTimeout(() => {
             carregarDados(); 
         }, 1200);
@@ -580,17 +580,21 @@ function verificarCPFAdmin() {
 }
 
 function carregarDados() {
+    // Remove scripts antigos para limpar a árvore do DOM
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
+    
     const sE = document.createElement('script');
-    sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&t=${Date.now()}`;
+    // 'v=Date.now()' injeta um parâmetro mutável eliminando o cache de resposta local
+    sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&v=${Date.now()}`;
     sE.className = 'jsonp-temp';
+    
     document.body.appendChild(sE);
 }
 
 function retornoEscalas(dados) { 
     dbEscalas = dados; 
     renderAdmin(); 
-    esconderLoader(); // O loader só some quando o painel for atualizado com sucesso
+    esconderLoader(); // Fecha o carregando somente quando os dados já estão renderizados
 }
 
 function renderAdmin() {
@@ -752,7 +756,7 @@ async function salvarEscala(btn) {
 
 async function deletarEscala(index) {
     if(confirm("Deseja realmente remover esta escala?")) {
-        mostrarLoader(); // Exibe o loader ao deletar também
+        mostrarLoader();
         await enviarPonto({ acao: "deletarEscala", index: index });
     }
 }
