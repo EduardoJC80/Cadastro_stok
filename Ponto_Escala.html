@@ -358,6 +358,7 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbwQg7TLPur-MnWTz-syN-_Lx9tOVMbhIhVilHHkfAATLaHk7c98A19Rs1DFAp7XxMi8/exec";
 let dbEscalas = [];
 
+// --- INICIALIZAÇÃO DO SISTEMA ---
 window.onload = () => {
     criarModalAlertaDinamico();
     criarLoaderDinamico(); 
@@ -370,12 +371,11 @@ window.onload = () => {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    // Adaptação para o seu campo de texto customizado do HTML
-    const hojeFormatado BR = dataHoje.toLocaleDateString('pt-BR'); // Retorna "DD/MM/AAAA"
+    // Define a data de hoje no formato BR (DD/MM/AAAA) para o seu input customizado
+    const hojeFormatadoBR = dataHoje.toLocaleDateString('pt-BR');
     const filtroInput = document.getElementById('filtroDataAdmin');
     if (filtroInput) {
         filtroInput.value = hojeFormatadoBR;
-        // Escuta digitações manuais no campo de texto
         filtroInput.addEventListener('input', renderAdmin);
     }
 
@@ -387,12 +387,11 @@ window.onload = () => {
     focarInputCPF();
 };
 
-// ESSA FUNÇÃO TRATA O SEU CALENDÁRIO OCULTO DO HTML
+// --- CONTROLE DE SINCRONIZAÇÃO DO CALENDÁRIO OCULTO ---
 function syncDate(valor, idAlvo) {
     if (!valor) return;
-    // O input date nativo retorna "AAAA-MM-DD", vamos quebrar e virar para "DD/MM/AAAA"
-    const partes = valor.split('-');
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    const partes = valor.split('-'); // Quebra "AAAA-MM-DD"
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`; // Vira "DD/MM/AAAA"
     
     const alvo = document.getElementById(idAlvo);
     if (alvo) {
@@ -401,6 +400,7 @@ function syncDate(valor, idAlvo) {
     renderAdmin();
 }
 
+// --- COMUNICAÇÃO VIA JSONP (EVITA BLOQUEIO DE CORS) ---
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -415,16 +415,33 @@ function retornoEscalas(dados) {
     esconderLoader(); 
 }
 
+// --- REDIRECIONADOR DE ENVIO (POST) ---
+async function enviarPonto(payload) {
+    if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
+    try {
+        await fetch(API_URL, { 
+            method: "POST", 
+            mode: "no-cors", 
+            headers: { "Content-Type": "text/plain" }, 
+            body: JSON.stringify(payload) 
+        });
+        mostrarLoader();
+        setTimeout(carregarDados, 1200);
+    } catch (e) { 
+        esconderLoader(); 
+        exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro"); 
+    }
+}
+
+// --- RENDERIZADOR PRINCIPAL DO PAINEL ADMIN ---
 function renderAdmin() {
     let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
-    
     filtro = filtro.trim();
 
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    // Filtra comparando diretamente texto com texto ("DD/MM/AAAA")
     const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro);
     const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
@@ -480,48 +497,21 @@ function renderAdmin() {
                     <td class="text-center align-middle">${p.Intervalo || '--'}</td>
                     <td class="text-center align-middle">${p.Volta || '--'}</td>
                     <td class="text-center align-middle">${p.Saída || '--'}</td>
-                    <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
+                    <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;" onclick="abrirModalEdicaoPonto('${p.CPF}')"></i></td>
                 </tr>
             `).join('');
         }
     }
 }
 
-function focarInputCPF() {
-    setTimeout(() => {
-        const input = document.getElementById('cpfIn');
-        if (input && document.getElementById('screenPonto').classList.contains('active')) input.focus();
-    }, 200);
-}
-
-function criarLoaderDinamico() {
-    if (document.getElementById('appLoaderGlobal')) return;
-    document.body.insertAdjacentHTML('beforeend', `
-        <div id="appLoaderGlobal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
-            <div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div>
-            <span class="mt-3 fw-bold text-dark">Atualizando dados...</span>
-        </div>
-    `);
-}
-
-function mostrarLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'flex'; }
-function esconderLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'none'; }
-
-async function enviarPonto(payload) {
-    if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
-    try {
-        await fetch(API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
-        mostrarLoader();
-        setTimeout(carregarDados, 1200);
-    } catch (e) { esconderLoader(); exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro"); }
-}
-
+// --- BATIDA DE PONTO MANUAL / FÍSICA ---
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
     const hoje = new Date().toLocaleDateString('pt-BR');
 
     if (!cpf || cpf.length < 14) { exibirAlerta("Aviso", "Insira um CPF completo.", "info"); return; }
+    
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const m = document.getElementById('modalSenha');
         if(m) bootstrap.Modal.getOrCreateInstance(m).show();
@@ -557,10 +547,156 @@ async function verificarEGravarPonto() {
         else if (dfe < -5) { statusPonto = "Adiantado"; statusIcone = "info"; }
     }
 
-    exibirAlerta(`Ponto: ${statusPonto}`, `${colab.Nome} - ${msgModal}`, statusIcone);
+    // Dispara modal nativo de confirmação do seu HTML antes do envio
+    document.getElementById('confNome').innerText = colab.Nome;
+    document.getElementById('confTipo').innerText = tipo.toUpperCase();
+    document.getElementById('confHora').innerText = horaAtual;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmPonto')).show();
+
     await enviarPonto({ acao: "registrarPonto", data: { Nome: colab.Nome, CPF: cpf, Data: String(hoje), Hora: horaAtual, Tipo: tipo } });
 }
 
+// --- INTERFACES DE EDIÇÃO DE PONTO ADMIN ---
+function abrirModalEdicaoPonto(cpf) {
+    const hoje = document.getElementById('filtroDataAdmin').value;
+    const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
+    if(!colab) return;
+
+    document.getElementById('editPontoIdx').value = cpf;
+    document.getElementById('editPontoE').value = colab.Entrada !== "--" ? colab.Entrada : "";
+    document.getElementById('editPontoI').value = colab.Intervalo !== "--" ? colab.Intervalo : "";
+    document.getElementById('editPontoV').value = colab.Volta !== "--" ? colab.Volta : "";
+    document.getElementById('editPontoS').value = colab.Saída !== "--" ? colab.Saída : "";
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditPonto')).show();
+}
+
+async function salvarEdicaoPonto() {
+    const cpf = document.getElementById('editPontoIdx').value;
+    const data = document.getElementById('filtroDataAdmin').value;
+
+    const payload = {
+        acao: "editarPontosEmLote", // Certifique-se que o back trata ou cria novas linhas se necessário
+        data: {
+            CPF: cpf,
+            Data: data,
+            Entrada: document.getElementById('editPontoE').value,
+            Intervalo: document.getElementById('editPontoI').value,
+            Volta: document.getElementById('editPontoV').value,
+            Saída: document.getElementById('editPontoS').value
+        }
+    };
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditPonto')).hide();
+    await enviarPonto(payload);
+}
+
+// --- CONEXÃO DOS MODAIS DE CADASTRO DE ESCALA ---
+async function salvarEscala(btn) {
+    const nome = document.getElementById('cadNome').value;
+    const cpf = document.getElementById('cadCPF').value;
+    const data = document.getElementById('cadData').value; 
+    const hora = document.getElementById('cadHora').value;
+    if(!nome || cpf.length < 14 || !data || !hora) return exibirAlerta("Erro", "Preencha tudo.", "erro");
+    
+    btn.disabled = true;
+    await enviarPonto({ acao: "salvarEscala", data: { Nome: nome, CPF: cpf, Data: data, Hora: hora } });
+    btn.disabled = false;
+    
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCad')).hide();
+    document.getElementById('cadNome').value = ""; 
+    document.getElementById('cadCPF').value = ""; 
+    document.getElementById('cadData').value = ""; 
+    document.getElementById('cadHora').value = "";
+}
+
+async function deletarEscala(index) { 
+    if(confirm("Remover escala?")) { 
+        mostrarLoader(); 
+        await enviarPonto({ acao: "deletarEscala", index: index }); 
+    } 
+}
+
+// --- MECÂNICA DE BUSCA DO MODAL DE RELATÓRIO MENSAL ---
+function buscarRelatorio() {
+    const inicioStr = document.getElementById('relatorioInicio').value;
+    const fimStr = document.getElementById('relatorioFim').value;
+    if(!inicioStr || !fimStr) return exibirAlerta("Aviso", "Selecione o período de início e fim.", "info");
+
+    const inicio = new Date(inicioStr + "T00:00:00");
+    const fim = new Date(fimStr + "T00:00:00");
+
+    const tBodyEscalas = document.getElementById('corpoRelEscalas');
+    const tBodyPontos = document.getElementById('corpoRelPontos');
+
+    // Converte datas "DD/MM/AAAA" do db para comparar objetos Date reais
+    const converterDataParaObjeto = (txt) => {
+        const [d, m, a] = txt.split('/').map(Number);
+        return new Date(a, m - 1, d);
+    };
+
+    const filtrados = dbEscalas.filter(e => {
+        const dObj = converterDataParaObjeto(e.Data);
+        return dObj >= inicio && dObj <= fim;
+    });
+
+    if(tBodyEscalas) {
+        tBodyEscalas.innerHTML = filtrados.map(e => `
+            <tr>
+                <td class="text-start ps-4"><strong>${e.Nome}</strong><br><small class="text-muted">${e.CPF}</small></td>
+                <td>${e.Data}</td>
+                <td>${e.Hora}</td>
+            </tr>
+        `).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">Sem registros</td></tr>';
+    }
+
+    if(tBodyPontos) {
+        let listagemPontosHtml = "";
+        filtrados.forEach(e => {
+            if(e.Entrada !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Entrada: ${e.Entrada}</td></tr>`;
+            if(e.Intervalo !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Intervalo: ${e.Intervalo}</td></tr>`;
+            if(e.Volta !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Volta: ${e.Volta}</td></tr>`;
+            if(e.Saída !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Saída: ${e.Saída}</td></tr>`;
+        });
+        tBodyPontos.innerHTML = listagemPontosHtml || '<tr><td colspan="3" class="text-center text-muted py-3">Sem batidas</td></tr>';
+    }
+}
+
+// --- EXPORTAÇÕES EXCEL NATIVAS (HTML TABLE PARA DATA URI) ---
+function exportarExcel() {
+    const filtro = document.getElementById('filtroDataAdmin').value;
+    const tabela = document.querySelector("#screenAdmin .glass-card:nth-of-type(2) table");
+    if(!tabela) return;
+    
+    const html = tabela.outerHTML;
+    const url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(html);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Pontos_Diarios_${filtro.replace(/\//g, '_')}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportarRelatorioMensal(tipo) {
+    let tabelaHtml = "";
+    if(tipo === 'escalas' || tipo === 'ambos') {
+        tabelaHtml += "<h3>Escalas do Período</h3>" + document.getElementById('corpoRelEscalas').parentElement.outerHTML;
+    }
+    if(tipo === 'pontos' || tipo === 'ambos') {
+        tabelaHtml += "<h3>Pontos do Período</h3>" + document.getElementById('corpoRelPontos').parentElement.outerHTML;
+    }
+    
+    const url = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent(tabelaHtml);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Relatorio_Periodo.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// --- NAVEGAÇÃO E REGRAS DE SEGURANÇA INTERNAS ---
 function verificarCPFAdmin() { verificarEGravarPonto(); }
 function abrirModalCad() { const m = document.getElementById('modalCad'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
 function abrirModalRelatorio() { const m = document.getElementById('modalRelatorio'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
@@ -599,22 +735,10 @@ function formatarData(el) {
 }
 
 function atualizarRelogio() { const c = document.getElementById('clock'); if(c) c.innerText = new Date().toLocaleTimeString('pt-BR'); }
-
-async function salvarEscala(btn) {
-    const nome = document.getElementById('cadNome').value;
-    const cpf = document.getElementById('cadCPF').value;
-    const data = document.getElementById('cadData').value; 
-    const hora = document.getElementById('cadHora').value;
-    if(!nome || cpf.length < 14 || !data || !hora) return exibirAlerta("Erro", "Preencha tudo.", "erro");
-    
-    btn.disabled = true;
-    await enviarPonto({ acao: "salvarEscala", data: { Nome: nome, CPF: cpf, Data: data, Hora: hora } });
-    btn.disabled = false;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCad')).hide();
-    document.getElementById('cadNome').value = ""; document.getElementById('cadCPF').value = ""; document.getElementById('cadData').value = ""; document.getElementById('cadHora').value = "";
-}
-
-async function deletarEscala(index) { if(confirm("Remover escala?")) { mostrarLoader(); await enviarPonto({ acao: "deletarEscala", index: index }); } }
+function focarInputCPF() { setTimeout(() => { const input = document.getElementById('cpfIn'); if (input && document.getElementById('screenPonto').classList.contains('active')) input.focus(); }, 200); }
+function criarLoaderDinamico() { if (document.getElementById('appLoaderGlobal')) return; document.body.insertAdjacentHTML('beforeend', `<div id="appLoaderGlobal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;"><div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div><span class="mt-3 fw-bold text-dark">Atualizando dados...</span></div>`); }
+function mostrarLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'flex'; }
+function esconderLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'none'; }
 
 function validarSenha() {
     if (document.getElementById('adminPass').value === "1234") {
