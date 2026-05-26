@@ -360,7 +360,7 @@ let dbEscalas = [];
 
 window.onload = () => {
     criarModalAlertaDinamico();
-    criarLoaderDinamico(); 
+    criarLoaderDinamico(); // Inicializa o elemento de carregamento escondido
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
@@ -370,8 +370,15 @@ window.onload = () => {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
-    if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
+    // Define a data padrão do input do painel administrativo (formato ISO exigido pelo navegador: AAAA-MM-DD)
+    const ano = dataHoje.getFullYear();
+    const mes = String(dataHoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(dataHoje.getDate()).padStart(2, '0');
+    const hojeInputISO = `${ano}-${mes}-${dia}`;
+    
+    if(document.getElementById('filtroDataAdmin')) {
+        document.getElementById('filtroDataAdmin').value = hojeInputISO;
+    }
 
     document.getElementById('cpfIn')?.addEventListener('input', (e) => { mascaraCPF(e); });
     document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
@@ -392,6 +399,7 @@ function focarInputCPF() {
     }, 200);
 }
 
+// --- FUNÇÕES DO CARREGANDO (LOADER DINÂMICO) ---
 function criarLoaderDinamico() {
     if (document.getElementById('appLoaderGlobal')) return;
     const loaderHtml = `
@@ -497,8 +505,8 @@ async function verificarEGravarPonto() {
     let msgModal = `registrou sua ${tipo} com sucesso às ${horaAtual}.`;
 
     if (tipo === "Entrada") {
-        const minutosEscala = extrairMinutos(colab.Hora);
-        const dfe = minutesAtual - minutosEscala;
+        const minutesEscala = extrairMinutos(colab.Hora);
+        const dfe = minutesAtual - minutesEscala;
         if (dfe > 5) {
             statusPonto = "Atrasado"; statusIcone = "erro";
             msgModal = `Entrada registrada em atraso às ${horaAtual}.`;
@@ -551,19 +559,27 @@ function retornoEscalas(dados) {
 }
 
 function renderAdmin() {
-    let filtro = document.getElementById('filtroDataAdmin')?.value;
-    if(!filtro) return;
+    let filtroBruto = document.getElementById('filtroDataAdmin')?.value;
+    if(!filtroBruto) return;
     
-    if (filtro.includes('-')) {
-        const partes = filtro.split('-');
-        filtro = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    let filtro = filtroBruto;
+    
+    // Normalização indispensável: converte "AAAA-MM-DD" do input calendar para "DD/MM/AAAA"
+    if (filtroBruto.includes('-')) {
+        const partes = filtroBruto.split('-');
+        if (partes[0].length === 4) {
+            filtro = `${partes[2]}/${partes[1]}/${partes[0]}`;
+        } else {
+            filtro = `${partes[0]}/${partes[1]}/${partes[2]}`;
+        }
     }
 
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    const escDia = dbEscalas.filter(e => e.Data === filtro);
-    const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
+    // Filtra diretamente com base no texto puro gerado pelo getDisplayValues()
+    const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro);
+    const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
@@ -584,24 +600,30 @@ function renderAdmin() {
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
 
-    document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
-        <tr>
-            <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
-            <td class="text-center align-middle">${e.Hora}</td>
-            <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
-        </tr>
-    `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
+    const tabEscalados = document.getElementById('tabEscalados');
+    if (tabEscalados) {
+        tabEscalados.innerHTML = escDia.map(e => `
+            <tr>
+                <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
+                <td class="text-center align-middle">${e.Hora}</td>
+                <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
+            </tr>
+        `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
+    }
 
-    document.getElementById('tabStatus').innerHTML = ptsDiaReal.map(p => `
-        <tr>
-            <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
-            <td class="text-center align-middle">${p.Entrada || '--'}</td>
-            <td class="text-center align-middle">${p.Intervalo || '--'}</td>
-            <td class="text-center align-middle">${p.Volta || '--'}</td>
-            <td class="text-center align-middle">${p.Saída || '--'}</td>
-            <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
-        </tr>
-    `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado para este dia.</td></tr>';
+    const tabStatus = document.getElementById('tabStatus');
+    if (tabStatus) {
+        tabStatus.innerHTML = ptsDiaReal.map(p => `
+            <tr>
+                <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
+                <td class="text-center align-middle">${p.Entrada || '--'}</td>
+                <td class="text-center align-middle">${p.Intervalo || '--'}</td>
+                <td class="text-center align-middle">${p.Volta || '--'}</td>
+                <td class="text-center align-middle">${p.Saída || '--'}</td>
+                <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
+            </tr>
+        `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado para este dia.</td></tr>';
+    }
 }
 
 function abrirModalCad() {
@@ -616,8 +638,6 @@ function abrirModalRelatorio() {
 
 function syncDate(valor, idAlvo) {
     if (!valor) return;
-    const partes = valor.split('-');
-    document.getElementById(idAlvo).value = partes[2] + '/' + partes[1] + '/' + partes[0];
     renderAdmin();
 }
 
