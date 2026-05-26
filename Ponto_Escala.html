@@ -370,14 +370,13 @@ window.onload = () => {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    const ano = dataHoje.getFullYear();
-    const mes = String(dataHoje.getMonth() + 1).padStart(2, '0');
-    const dia = String(dataHoje.getDate()).padStart(2, '0');
-    
+    // Adaptação para o seu campo de texto customizado do HTML
+    const hojeFormatado BR = dataHoje.toLocaleDateString('pt-BR'); // Retorna "DD/MM/AAAA"
     const filtroInput = document.getElementById('filtroDataAdmin');
     if (filtroInput) {
-        filtroInput.value = `${ano}-${mes}-${dia}`;
-        filtroInput.addEventListener('change', renderAdmin);
+        filtroInput.value = hojeFormatadoBR;
+        // Escuta digitações manuais no campo de texto
+        filtroInput.addEventListener('input', renderAdmin);
     }
 
     document.getElementById('cpfIn')?.addEventListener('input', (e) => { mascaraCPF(e); });
@@ -388,8 +387,21 @@ window.onload = () => {
     focarInputCPF();
 };
 
+// ESSA FUNÇÃO TRATA O SEU CALENDÁRIO OCULTO DO HTML
+function syncDate(valor, idAlvo) {
+    if (!valor) return;
+    // O input date nativo retorna "AAAA-MM-DD", vamos quebrar e virar para "DD/MM/AAAA"
+    const partes = valor.split('-');
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    
+    const alvo = document.getElementById(idAlvo);
+    if (alvo) {
+        alvo.value = dataFormatada;
+    }
+    renderAdmin();
+}
+
 function carregarDados() {
-    // Remove scripts antigos injetados para não poluir o HTML
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
     sE.src = `${API_URL}?v=${Date.now()}`;
@@ -397,7 +409,6 @@ function carregarDados() {
     document.body.appendChild(sE);
 }
 
-// Essa função é chamada automaticamente assim que o Google responde
 function retornoEscalas(dados) { 
     dbEscalas = dados || []; 
     renderAdmin(); 
@@ -405,18 +416,15 @@ function retornoEscalas(dados) {
 }
 
 function renderAdmin() {
-    let filtroBruto = document.getElementById('filtroDataAdmin')?.value;
-    if(!filtroBruto) return;
+    let filtro = document.getElementById('filtroDataAdmin')?.value;
+    if(!filtro) return;
     
-    let filtro = filtroBruto;
-    if (filtroBruto.includes('-')) {
-        const partes = filtroBruto.split('-');
-        filtro = `${partes[2]}/${partes[1]}/${partes[0]}`;
-    }
+    filtro = filtro.trim();
 
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
+    // Filtra comparando diretamente texto com texto ("DD/MM/AAAA")
     const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro);
     const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
@@ -441,27 +449,41 @@ function renderAdmin() {
 
     const tabEscalados = document.getElementById('tabEscalados');
     if (tabEscalados) {
-        tabEscalados.innerHTML = escDia.map(e => `
-            <tr>
-                <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
-                <td class="text-center align-middle">${e.Hora}</td>
-                <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
-            </tr>
-        `).join('') || '<tr><td colspan="3" class="text-center py-4 text-muted">Nenhuma escala para este dia.</td></tr>';
+        if (escDia.length === 0) {
+            tabEscalados.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">Nenhuma escala para o dia ${filtro}.</td></tr>`;
+        } else {
+            tabEscalados.innerHTML = escDia.map(e => `
+                <tr>
+                    <td class="text-start ps-4">
+                        <span class="colab-name">${e.Nome}</span>
+                        <span class="colab-cpf-sub">${e.CPF}</span>
+                    </td>
+                    <td class="text-center align-middle">${e.Hora}</td>
+                    <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
+                </tr>
+            `).join('');
+        }
     }
 
     const tabStatus = document.getElementById('tabStatus');
     if (tabStatus) {
-        tabStatus.innerHTML = ptsDiaReal.map(p => `
-            <tr>
-                <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
-                <td class="text-center align-middle">${p.Entrada || '--'}</td>
-                <td class="text-center align-middle">${p.Intervalo || '--'}</td>
-                <td class="text-center align-middle">${p.Volta || '--'}</td>
-                <td class="text-center align-middle">${p.Saída || '--'}</td>
-                <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
-            </tr>
-        `).join('') || '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum ponto registrado para este dia.</td></tr>';
+        if (ptsDiaReal.length === 0) {
+            tabStatus.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum ponto registrado para o dia ${filtro}.</td></tr>`;
+        } else {
+            tabStatus.innerHTML = ptsDiaReal.map(p => `
+                <tr>
+                    <td class="text-start ps-4 align-middle">
+                        <span class="colab-name">${p.Nome}</span>
+                        <span class="colab-cpf-sub">${p.CPF}</span>
+                    </td>
+                    <td class="text-center align-middle">${p.Entrada || '--'}</td>
+                    <td class="text-center align-middle">${p.Intervalo || '--'}</td>
+                    <td class="text-center align-middle">${p.Volta || '--'}</td>
+                    <td class="text-center align-middle">${p.Saída || '--'}</td>
+                    <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
+                </tr>
+            `).join('');
+        }
     }
 }
 
@@ -477,7 +499,7 @@ function criarLoaderDinamico() {
     document.body.insertAdjacentHTML('beforeend', `
         <div id="appLoaderGlobal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
             <div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div>
-            <span class="mt-3 fw-bold text-dark">Atualizando painel...</span>
+            <span class="mt-3 fw-bold text-dark">Atualizando dados...</span>
         </div>
     `);
 }
@@ -533,8 +555,7 @@ async function verificarEGravarPonto() {
         const dfe = minutesAtual - extrairMinutos(colab.Hora);
         if (dfe > 5) { statusPonto = "Atrasado"; statusIcone = "erro"; }
         else if (dfe < -5) { statusPonto = "Adiantado"; statusIcone = "info"; }
-    } else if (tipo === "Volta" && (minutesAtual - extrairMinutos(colab.Intervalo)) < 40) { return; }
-    else if (tipo === "Saída" && (minutesAtual - extrairMinutos(colab.Volta)) < 90) { return; }
+    }
 
     exibirAlerta(`Ponto: ${statusPonto}`, `${colab.Nome} - ${msgModal}`, statusIcone);
     await enviarPonto({ acao: "registrarPonto", data: { Nome: colab.Nome, CPF: cpf, Data: String(hoje), Hora: horaAtual, Tipo: tipo } });
@@ -543,7 +564,6 @@ async function verificarEGravarPonto() {
 function verificarCPFAdmin() { verificarEGravarPonto(); }
 function abrirModalCad() { const m = document.getElementById('modalCad'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
 function abrirModalRelatorio() { const m = document.getElementById('modalRelatorio'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
-function syncDate(valor, idAlvo) { renderAdmin(); }
 
 function criarModalAlertaDinamico() {
     if (document.getElementById('modalAlertaDinamico')) return;
