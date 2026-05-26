@@ -382,7 +382,7 @@ window.onload = () => {
     document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
     
     carregarDados();
-    setInterval(renderAdmin, 60000);
+    setInterval(renderAdmin, 60000); // Atualiza os contadores automaticamente a cada 1 minuto
     focarInputCPF();
 
     document.getElementById('modalAlertaDinamico')?.addEventListener('hidden.bs.modal', focarInputCPF);
@@ -397,7 +397,7 @@ function focarInputCPF() {
     }, 200);
 }
 
-// Envia os dados definindo explicitamente as abas destino
+// Envia os payloads definindo explicitamente a aba de destino
 async function enviarDadosPonto(payload) {
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
     try {
@@ -413,6 +413,7 @@ async function enviarDadosPonto(payload) {
     }
 }
 
+// Lógica de batida de ponto inteligente vinculada à aba RegistroPonto
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
@@ -423,6 +424,7 @@ async function verificarEGravarPonto() {
         return;
     }
 
+    // Acesso ao painel administrativo secreto via CPF "000.000.000-00"
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const mSenha = document.getElementById('modalSenha');
         if(mSenha) bootstrap.Modal.getOrCreateInstance(mSenha).show();
@@ -430,6 +432,7 @@ async function verificarEGravarPonto() {
         return;
     }
 
+    // Valida se o funcionário está cadastrado na escala (aba Funcionarios) na data de hoje
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
     if (!colab) {
         exibirAlerta("Não Autorizado", "CPF não encontrado na escala de hoje.", "erro");
@@ -451,7 +454,7 @@ async function verificarEGravarPonto() {
         return !valor || valor.trim() === "" || valor.trim() === "--";
     };
 
-    // Define qual o tipo da batida na linha horizontal
+    // Identifica qual a próxima coluna vazia na linha horizontal do funcionário
     let tipo = "Entrada";
     if (estaVazio(colab.Entrada)) tipo = "Entrada";
     else if (estaVazio(colab.Intervalo)) tipo = "Intervalo";
@@ -463,7 +466,7 @@ async function verificarEGravarPonto() {
         return; 
     }
 
-    // TRAVA 1: Bloqueio de re-batida inferior a 40 minutos do último ponto registrado
+    // TRAVA 1: Bloqueio de re-batida acidental inferior a 40 minutos do último ponto
     const horariosExistentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
     if (horariosExistentes.length > 0) {
         const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
@@ -480,7 +483,7 @@ async function verificarEGravarPonto() {
     let statusIcone = "sucesso";
     let msgModal = `registrou sua ${tipo} com sucesso às ${horaAtual}.`;
 
-    // REGRA 2: Tolerância de 5 minutos na ENTRADA baseando-se no horário da aba Funcionarios
+    // REGRA 2: Tolerância de 5 minutos na ENTRADA baseada no horário da aba Funcionarios
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
         const diferenca = minutosAtual - minutosEscala;
@@ -520,7 +523,7 @@ async function verificarEGravarPonto() {
         }
     }
 
-    // Payload estruturado enviando comandos para a aba "RegistroPonto"
+    // Payload configurado para atualizar/gravar na aba RegistroPonto
     const payload = {
         aba: "RegistroPonto",
         acao: "registrarPonto",
@@ -539,7 +542,7 @@ async function verificarEGravarPonto() {
 
 function verificarCPFAdmin() { verificarEGravarPonto(); }
 
-// Carrega os dados fazendo a leitura cruzada via Apps Script
+// Executa a leitura global unificada do banco de dados (Retorna dados cruzados de Funcionarios + RegistroPonto)
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -553,10 +556,12 @@ function retornoEscalas(dados) {
     renderAdmin(); 
 }
 
+// Renderização inteligente do painel ADM cruzando os dados das duas abas
 function renderAdmin() {
     let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
 
+    // Padroniza datas vindas de inputs do tipo date (AAAA-MM-DD -> DD/MM/AAAA)
     if (filtro.includes('-')) {
         filtro = filtro.split('-').reverse().join('/');
     }
@@ -564,10 +569,14 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
+    // Filtra dados com base na aba Funcionarios
     const escDia = dbEscalas.filter(e => e.Data === filtro);
+    
+    // Filtra dados com base na aba RegistroPonto (Colaboradores com Entrada registrada)
     const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
+    // Identificação dinâmica de faltas (Escala vencida há mais de 10 minutos sem Entrada marcada)
     const faltasEfetivas = escDia.filter(e => {
         if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--") return false;
         if (!e.Hora || e.Hora === "--") return false;
@@ -592,7 +601,7 @@ function renderAdmin() {
         listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || '<div>Ninguém</div>';
     }
 
-    // --- TABELA DE ESCALADOS (Dados vindos de Funcionarios) ---
+    // --- TABELA DE ESCALADOS (Dados da aba Funcionarios) ---
     const tabEscalados = document.getElementById('tabEscalados');
     if(tabEscalados) {
         tabEscalados.innerHTML = escDia.map(e => `
@@ -604,7 +613,7 @@ function renderAdmin() {
         `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
     }
 
-    // --- TABELA DE MONITORAMENTO HORIZONTAL (Dados vindos de RegistroPonto) ---
+    // --- TABELA DE MONITORAMENTO EM LINHA HORIZONTAL (Dados da aba RegistroPonto) ---
     const tabStatus = document.getElementById('tabStatus');
     if(tabStatus) {
         tabStatus.innerHTML = ptsDiaReal.map(p => `
@@ -632,8 +641,12 @@ function abrirModalRelatorio() {
 
 function syncDate(valor, idAlvo) {
     if (!valor) return;
-    const partes = valor.split('-');
-    document.getElementById(idAlvo).value = partes[2] + '/' + partes[1] + '/' + partes[0];
+    if(valor.includes('-')) {
+        const partes = valor.split('-');
+        document.getElementById(idAlvo).value = partes[2] + '/' + partes[1] + '/' + partes[0];
+    } else {
+        document.getElementById(idAlvo).value = valor;
+    }
     renderAdmin();
 }
 
@@ -680,7 +693,7 @@ function atualizarRelogio() {
     if(clock) clock.innerText = new Date().toLocaleTimeString('pt-BR');
 }
 
-// Botão "Nova Escala" -> Envia explicitamente os comandos direcionados à aba "Funcionarios"
+// Botão "Nova Escala" -> Grava explicitamente na aba Funcionarios
 async function salvarEscala(btn) {
     const d = {
         Nome: document.getElementById('cadNome').value,
@@ -712,6 +725,7 @@ async function salvarEscala(btn) {
     document.getElementById('cadHora').value = "";
 }
 
+// Deleta uma escala na aba Funcionarios
 async function deletarEscala(index) {
     if(confirm("Deseja realmente remover esta escala?")) {
         await enviarDadosPonto({ 
