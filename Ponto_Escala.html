@@ -360,7 +360,7 @@ let dbEscalas = [];
 
 window.onload = () => {
     criarModalAlertaDinamico();
-    criarLoaderDinamico(); // Inicializa o elemento de carregamento escondido
+    criarLoaderDinamico(); 
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
@@ -373,13 +373,8 @@ window.onload = () => {
     const hojeFormatado = dataHoje.toLocaleDateString('pt-BR');
     if(document.getElementById('filtroDataAdmin')) document.getElementById('filtroDataAdmin').value = hojeFormatado;
 
-    document.getElementById('cpfIn')?.addEventListener('input', (e) => {
-        mascaraCPF(e);
-    });
-
-    document.getElementById('cadCPF')?.addEventListener('input', (e) => {
-        mascaraCPF(e);
-    });
+    document.getElementById('cpfIn')?.addEventListener('input', (e) => { mascaraCPF(e); });
+    document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
     
     carregarDados();
     setInterval(renderAdmin, 60000);
@@ -397,21 +392,13 @@ function focarInputCPF() {
     }, 200);
 }
 
-// --- FUNÇÕES DO CARREGANDO (LOADER DINÂMICO) ---
 function criarLoaderDinamico() {
     if (document.getElementById('appLoaderGlobal')) return;
     const loaderHtml = `
         <div id="appLoaderGlobal" style="
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: rgba(255, 255, 255, 0.85); 
-            z-index: 9999; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column;
-            transition: all 0.3s ease;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; 
+            align-items: center; flex-direction: column; transition: all 0.3s ease;
         ">
             <div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div>
             <span class="mt-3 fw-bold text-dark" style="font-family: sans-serif; letter-spacing: 0.5px;">Atualizando painel com a planilha...</span>
@@ -422,21 +409,16 @@ function criarLoaderDinamico() {
 
 function mostrarLoader() {
     const loader = document.getElementById('appLoaderGlobal');
-    if (loader) {
-        loader.style.display = 'flex';
-    }
+    if (loader) loader.style.display = 'flex';
 }
 
 function esconderLoader() {
     const loader = document.getElementById('appLoaderGlobal');
-    if (loader) {
-        loader.style.display = 'none';
-    }
+    if (loader) loader.style.display = 'none';
 }
 
 async function enviarPonto(payload) {
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
-
     try {
         await fetch(API_URL, {
             method: "POST",
@@ -444,14 +426,8 @@ async function enviarPonto(payload) {
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify(payload)
         });
-        
-        // Exibe o carregando na tela imediatamente
         mostrarLoader();
-        
-        // Pausa de segurança para o banco consolidar antes de ler de volta
-        setTimeout(() => {
-            carregarDados(); 
-        }, 1200);
+        setTimeout(() => { carregarDados(); }, 1200);
     } catch (e) {
         esconderLoader();
         exibirAlerta("Erro", "Falha ao conectar com o banco de dados.", "erro");
@@ -492,9 +468,7 @@ async function verificarEGravarPonto() {
     const horaAtual = agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     const minutesAtual = (agora.getHours() * 60) + agora.getMinutes();
 
-    const estaVazio = (valor) => {
-        return !valor || valor.trim() === "" || valor.trim() === "--";
-    };
+    const estaVazio = (valor) => !valor || valor.trim() === "" || valor.trim() === "--";
 
     let tipo = "Entrada";
     if (estaVazio(colab.Entrada)) tipo = "Entrada";
@@ -511,7 +485,6 @@ async function verificarEGravarPonto() {
     if (horariosExistentes.length > 0) {
         const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
         const minutosUltima = extrairMinutos(ultimaBatidaStr);
-        
         if ((minutesAtual - minutosUltima) < 40) {
             exibirAlerta("Aviso", `${colab.Nome} já registrou a ${horariosExistentes.length === 1 ? 'entrada' : 'última batida'} às ${ultimaBatidaStr}`, "info");
             input.value = "";
@@ -526,81 +499,61 @@ async function verificarEGravarPonto() {
     if (tipo === "Entrada") {
         const minutosEscala = extrairMinutos(colab.Hora);
         const dfe = minutesAtual - minutosEscala;
-
         if (dfe > 5) {
-            statusPonto = "Atrasado";
-            statusIcone = "erro";
+            statusPonto = "Atrasado"; statusIcone = "erro";
             msgModal = `Entrada registrada em atraso às ${horaAtual}.`;
         } else if (dfe < -5) {
-            statusPonto = "Adiantado";
-            statusIcone = "info";
+            statusPonto = "Adiantado"; statusIcone = "info";
             msgModal = `Entrada registrada adiantada às ${horaAtual}.`;
         } else {
-            statusPonto = "Na Hora";
-            statusIcone = "sucesso";
+            statusPonto = "Na Hora"; statusIcone = "sucesso";
             msgModal = `Entrada registrada pontualmente às ${horaAtual}.`;
         }
     } 
     else if (tipo === "Volta") {
         const minutosIntervalo = extrairMinutos(colab.Intervalo);
-        const tempoDeIntervalo = minutesAtual - minutosIntervalo;
-        if (tempoDeIntervalo < 40) {
+        if ((minutesAtual - minutosIntervalo) < 40) {
             exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar antes de 40 minutos.", "erro");
-            input.value = "";
-            return;
+            input.value = ""; return;
         }
     } 
     else if (tipo === "Saída") {
         const minutesVolta = extrairMinutos(colab.Volta);
-        const tempoPosVolta = minutesAtual - minutesVolta;
-        if (tempoPosVolta < 90) {
+        if ((minutesAtual - minutesVolta) < 90) {
             exibirAlerta("Bloqueado", "A saída para casa não pode ser registrada antes de 1h30 após a volta do intervalo.", "erro");
-            input.value = "";
-            return;
+            input.value = ""; return;
         }
     }
 
     const payload = {
         acao: "registrarPonto",
-        data: {
-            Nome: colab.Nome,
-            CPF: cpf,
-            Data: String(hoje),
-            Hora: horaAtual,
-            Tipo: tipo
-        }
+        data: { Nome: colab.Nome, CPF: cpf, Data: String(hoje), Hora: horaAtual, Tipo: tipo }
     };
 
     exibirAlerta(`Ponto: ${statusPonto}`, `${colab.Nome} - ${msgModal}`, statusIcone);
     await enviarPonto(payload);
 }
 
-function verificarCPFAdmin() {
-    verificarEGravarPonto();
-}
+function verificarCPFAdmin() { verificarEGravarPonto(); }
 
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
-    
     const sE = document.createElement('script');
-    // O Timestamp dinâmico 'v=Date.now()' destrói o cache do navegador e força a leitura real
     sE.src = `${API_URL}?tipo=escalas&callback=retornoEscalas&v=${Date.now()}`;
     sE.className = 'jsonp-temp';
-    
     document.body.appendChild(sE);
 }
 
 function retornoEscalas(dados) { 
     dbEscalas = dados; 
     renderAdmin(); 
-    esconderLoader(); // O loader fecha imediatamente após a tela ser remontada com os dados novos
+    esconderLoader(); 
 }
 
 function renderAdmin() {
     let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
     
-    // Normaliza o filtro do painel para o formato brasileiro DD/MM/AAAA se vier com traços
     if (filtro.includes('-')) {
         const partes = filtro.split('-');
         filtro = `${partes[2]}/${partes[1]}/${partes[0]}`;
@@ -609,26 +562,13 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    // --- HELPER DE COMPARAÇÃO ROBUSTA DE DATAS ---
-    const normalizarDataParaBR = (dataStr) => {
-        if (!dataStr) return "";
-        let d = String(dataStr).trim();
-        if (d.includes('-')) {
-            const partes = d.split('-');
-            if (partes[0].length === 4) { // Se for AAAA-MM-DD
-                return `${partes[2]}/${partes[1]}/${partes[0]}`;
-            }
-        }
-        return d;
-    };
-
-    // Cruzamento e filtragem estruturada usando o normalizador
-    const escDia = dbEscalas.filter(e => normalizarDataParaBR(e.Data) === filtro);
-    const ptsDiaReal = dbEscalas.filter(e => normalizarDataParaBR(e.Data) === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
+    const escDia = dbEscalas.filter(e => e.Data === filtro);
+    const ptsDiaReal = dbEscalas.filter(e => e.Data === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
         if (e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--") return false;
+        if (!e.Hora || e.Hora === "--") return false;
         const [h, m] = e.Hora.split(':').map(Number);
         return (minutosAgora > (h * 60 + m + 10));
     });
@@ -638,17 +578,11 @@ function renderAdmin() {
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
     const listEscalados = document.getElementById('listEscalados');
-    if(listEscalados) {
-        listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
-    }
+    if(listEscalados) listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
     const listPresentes = document.getElementById('listPresentes');
-    if(listPresentes) {
-        listPresentes.innerHTML = ptsDiaReal.map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
-    }
+    if(listPresentes) listPresentes.innerHTML = ptsDiaReal.map(e => `<div>${e.Nome} - ${e.Entrada}</div>`).join('') || 'Ninguém';
     const listFaltas = document.getElementById('listFaltas');
-    if(listFaltas) {
-        listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
-    }
+    if(listFaltas) listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
 
     document.getElementById('tabEscalados').innerHTML = escDia.map(e => `
         <tr>
@@ -746,12 +680,7 @@ async function salvarEscala(btn) {
         dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
 
-    const d = {
-        Nome: nomeInput,
-        CPF: cpfInput,
-        Data: String(dataFormatada), 
-        Hora: horaInput
-    };
+    const d = { Nome: nomeInput, CPF: cpfInput, Data: String(dataFormatada), Hora: horaInput };
     
     const textoOriginal = btn.innerText;
     btn.disabled = true;
@@ -764,8 +693,7 @@ async function salvarEscala(btn) {
     
     const modalCadEl = document.getElementById('modalCad');
     if (modalCadEl) {
-        const modalInstance = bootstrap.Modal.getInstance(modalCadEl) || bootstrap.Modal.getOrCreateInstance(modalCadEl);
-        modalInstance.hide();
+        bootstrap.Modal.getOrCreateInstance(modalCadEl).hide();
     }
     
     document.getElementById('cadNome').value = "";
@@ -794,11 +722,9 @@ function validarSenha() {
 function sairAdmin() {
     if(document.getElementById('adminPass')) document.getElementById('adminPass').value = '';
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = '';
-    
     document.getElementById('screenAdmin').classList.remove('active');
     document.getElementById('screenPonto').classList.add('active');
     document.getElementById('btnSairHeader').style.display = 'none';
-    
     focarInputCPF();
 }
 </script>
