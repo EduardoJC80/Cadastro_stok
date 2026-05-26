@@ -358,20 +358,25 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbwQg7TLPur-MnWTz-syN-_Lx9tOVMbhIhVilHHkfAATLaHk7c98A19Rs1DFAp7XxMi8/exec";
 let dbEscalas = [];
 
-// --- INICIALIZAÇÃO DO SISTEMA ---
+// ==========================================
+// 1. INICIALIZAÇÃO E EVENTOS DE ENTRADA
+// ==========================================
 window.onload = () => {
     criarModalAlertaDinamico();
     criarLoaderDinamico(); 
+    
+    // Ativação do Relógio em Tempo Real
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
+    // Formatação da Data por Extenso do Cabeçalho
     const dataHoje = new Date();
     const elementoDataFull = document.getElementById('date-full');
     if (elementoDataFull) {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    // Define a data de hoje no formato BR (DD/MM/AAAA) para o seu input customizado
+    // Define a data atual simulada no padrão brasileiro para o input de texto do Admin
     const hojeFormatadoBR = dataHoje.toLocaleDateString('pt-BR');
     const filtroInput = document.getElementById('filtroDataAdmin');
     if (filtroInput) {
@@ -379,19 +384,21 @@ window.onload = () => {
         filtroInput.addEventListener('input', renderAdmin);
     }
 
+    // Aplicação das Máscaras de CPF nos Inputs
     document.getElementById('cpfIn')?.addEventListener('input', (e) => { mascaraCPF(e); });
     document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
     
+    // Carga de dados inicial e rotina de auto-atualização (1 em 1 minuto)
     carregarDados();
     setInterval(carregarDados, 60000);
     focarInputCPF();
 };
 
-// --- CONTROLE DE SINCRONIZAÇÃO DO CALENDÁRIO OCULTO ---
+// Sincroniza o input do calendário oculto injetando o valor tratado no formato brasileiro
 function syncDate(valor, idAlvo) {
     if (!valor) return;
-    const partes = valor.split('-'); // Quebra "AAAA-MM-DD"
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`; // Vira "DD/MM/AAAA"
+    const partes = valor.split('-'); // Trata o padrão "AAAA-MM-DD" vindo do picker nativo
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`; // Inverte para "DD/MM/AAAA"
     
     const alvo = document.getElementById(idAlvo);
     if (alvo) {
@@ -400,7 +407,9 @@ function syncDate(valor, idAlvo) {
     renderAdmin();
 }
 
-// --- COMUNICAÇÃO VIA JSONP (EVITA BLOQUEIO DE CORS) ---
+// ==========================================
+// 2. COMUNICAÇÃO DE DADOS (GET / POST)
+// ==========================================
 function carregarDados() {
     document.querySelectorAll('.jsonp-temp').forEach(s => s.remove());
     const sE = document.createElement('script');
@@ -415,7 +424,6 @@ function retornoEscalas(dados) {
     esconderLoader(); 
 }
 
-// --- REDIRECIONADOR DE ENVIO (POST) ---
 async function enviarPonto(payload) {
     if(document.getElementById('cpfIn')) document.getElementById('cpfIn').value = "";
     try {
@@ -433,7 +441,9 @@ async function enviarPonto(payload) {
     }
 }
 
-// --- RENDERIZADOR PRINCIPAL DO PAINEL ADMIN ---
+// ==========================================
+// 3. RENDERIZAÇÃO DAS TABELAS E CARDS ADMIN
+// ==========================================
 function renderAdmin() {
     let filtro = document.getElementById('filtroDataAdmin')?.value;
     if(!filtro) return;
@@ -442,6 +452,7 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
+    // Filtros estritos por data ("DD/MM/AAAA")
     const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro);
     const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
@@ -453,10 +464,12 @@ function renderAdmin() {
         return (minutosAgora > (h * 60 + m + 10));
     });
 
+    // Atualização dos indicadores numéricos superiores
     if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
+    // Listas suspensas de visualização rápida (Hover lists)
     const listEscalados = document.getElementById('listEscalados');
     if(listEscalados) listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
     const listPresentes = document.getElementById('listPresentes');
@@ -464,6 +477,7 @@ function renderAdmin() {
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
 
+    // Montagem da tabela da Escala do Dia
     const tabEscalados = document.getElementById('tabEscalados');
     if (tabEscalados) {
         if (escDia.length === 0) {
@@ -482,6 +496,7 @@ function renderAdmin() {
         }
     }
 
+    // Montagem da tabela de Registros de Ponto Realizados
     const tabStatus = document.getElementById('tabStatus');
     if (tabStatus) {
         if (ptsDiaReal.length === 0) {
@@ -504,22 +519,33 @@ function renderAdmin() {
     }
 }
 
-// --- BATIDA DE PONTO MANUAL / FÍSICA ---
+// ==========================================
+// 4. VALIDAÇÃO E EVENTO DE REGISTRO DE PONTO
+// ==========================================
 async function verificarEGravarPonto() {
     const input = document.getElementById('cpfIn');
     const cpf = input.value;
     const hoje = new Date().toLocaleDateString('pt-BR');
 
-    if (!cpf || cpf.length < 14) { exibirAlerta("Aviso", "Insira um CPF completo.", "info"); return; }
+    if (!cpf || cpf.length < 14) { 
+        exibirAlerta("Aviso", "Insira um CPF completo.", "info"); 
+        return; 
+    }
     
+    // Verificação de acesso Master via CPF dos administradores (000.000.000-00)
     if (cpf.replace(/\D/g, '') === "00000000000") {
         const m = document.getElementById('modalSenha');
         if(m) bootstrap.Modal.getOrCreateInstance(m).show();
-        input.value = ""; return;
+        input.value = ""; 
+        return;
     }
 
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
-    if (!colab) { exibirAlerta("Não Autorizado", "CPF não escalado para hoje.", "erro"); input.value = ""; return; }
+    if (!colab) { 
+        exibirAlerta("Não Autorizado", "CPF não escalado para hoje.", "erro"); 
+        input.value = ""; 
+        return; 
+    }
 
     const extrairMinutos = (hStr) => { if (!hStr || hStr === "--") return 0; const [h, m] = hStr.split(':').map(Number); return (h * 60) + m; };
     const agora = new Date();
@@ -527,17 +553,27 @@ async function verificarEGravarPonto() {
     const minutesAtual = (agora.getHours() * 60) + agora.getMinutes();
     const estaVazio = (v) => !v || v === "--";
 
+    // Definição inteligente do tipo de batida com base nas anteriores vazias
     let tipo = "Entrada";
     if (estaVazio(colab.Entrada)) tipo = "Entrada";
     else if (estaVazio(colab.Intervalo)) tipo = "Intervalo";
     else if (estaVazio(colab.Volta)) tipo = "Volta";
     else if (estaVazio(colab.Saída)) tipo = "Saída";
-    else { exibirAlerta("Limite Atingido", "Todos os pontos batidos hoje.", "info"); input.value = ""; return; }
+    else { 
+        exibirAlerta("Limite Atingido", "Todos os pontos batidos hoje.", "info"); 
+        input.value = ""; 
+        return; 
+    }
 
+    // Trava de segurança de 40 minutos entre batidas sucessivas
     const existentes = [colab.Entrada, colab.Intervalo, colab.Volta, colab.Saída].filter(h => !estaVazio(h));
     if (existentes.length > 0) {
         const ult = existentes[existentes.length - 1];
-        if ((minutesAtual - extrairMinutos(ult)) < 40) { exibirAlerta("Aviso", `Aguarde 40 min desde a última batida (${ult}).`, "info"); input.value = ""; return; }
+        if ((minutesAtual - extrairMinutos(ult)) < 40) { 
+            exibirAlerta("Aviso", `Aguarde 40 min desde a última batida (${ult}).`, "info"); 
+            input.value = ""; 
+            return; 
+        }
     }
 
     let statusPonto = "Na Hora", statusIcone = "sucesso", msgModal = `registrou sua ${tipo} às ${horaAtual}.`;
@@ -547,7 +583,7 @@ async function verificarEGravarPonto() {
         else if (dfe < -5) { statusPonto = "Adiantado"; statusIcone = "info"; }
     }
 
-    // Dispara modal nativo de confirmação do seu HTML antes do envio
+    // Monta e renderiza as informações no modal de confirmação do HTML
     document.getElementById('confNome').innerText = colab.Nome;
     document.getElementById('confTipo').innerText = tipo.toUpperCase();
     document.getElementById('confHora').innerText = horaAtual;
@@ -556,7 +592,9 @@ async function verificarEGravarPonto() {
     await enviarPonto({ acao: "registrarPonto", data: { Nome: colab.Nome, CPF: cpf, Data: String(hoje), Hora: horaAtual, Tipo: tipo } });
 }
 
-// --- INTERFACES DE EDIÇÃO DE PONTO ADMIN ---
+// ==========================================
+// 5. OPERAÇÕES DE EDIÇÃO E CADASTROS ADMIN
+// ==========================================
 function abrirModalEdicaoPonto(cpf) {
     const hoje = document.getElementById('filtroDataAdmin').value;
     const colab = dbEscalas.find(e => e.CPF === cpf && e.Data === hoje);
@@ -576,7 +614,7 @@ async function salvarEdicaoPonto() {
     const data = document.getElementById('filtroDataAdmin').value;
 
     const payload = {
-        acao: "editarPontosEmLote", // Certifique-se que o back trata ou cria novas linhas se necessário
+        acao: "editarPontosEmLote",
         data: {
             CPF: cpf,
             Data: data,
@@ -591,13 +629,12 @@ async function salvarEdicaoPonto() {
     await enviarPonto(payload);
 }
 
-// --- CONEXÃO DOS MODAIS DE CADASTRO DE ESCALA ---
 async function salvarEscala(btn) {
     const nome = document.getElementById('cadNome').value;
     const cpf = document.getElementById('cadCPF').value;
     const data = document.getElementById('cadData').value; 
     const hora = document.getElementById('cadHora').value;
-    if(!nome || cpf.length < 14 || !data || !hora) return exibirAlerta("Erro", "Preencha tudo.", "erro");
+    if(!nome || cpf.length < 14 || !data || !hora) return exibirAlerta("Erro", "Preencha todos os dados corretamente.", "erro");
     
     btn.disabled = true;
     await enviarPonto({ acao: "salvarEscala", data: { Nome: nome, CPF: cpf, Data: data, Hora: hora } });
@@ -611,17 +648,19 @@ async function salvarEscala(btn) {
 }
 
 async function deletarEscala(index) { 
-    if(confirm("Remover escala?")) { 
+    if(confirm("Deseja realmente remover esta escala permanentemente?")) { 
         mostrarLoader(); 
         await enviarPonto({ acao: "deletarEscala", index: index }); 
     } 
 }
 
-// --- MECÂNICA DE BUSCA DO MODAL DE RELATÓRIO MENSAL ---
+// ==========================================
+// 6. TRATAMENTO DE REQUISITOS DO MODAL RELATÓRIO
+// ==========================================
 function buscarRelatorio() {
     const inicioStr = document.getElementById('relatorioInicio').value;
     const fimStr = document.getElementById('relatorioFim').value;
-    if(!inicioStr || !fimStr) return exibirAlerta("Aviso", "Selecione o período de início e fim.", "info");
+    if(!inicioStr || !fimStr) return exibirAlerta("Aviso", "Defina as datas de início e fim do período.", "info");
 
     const inicio = new Date(inicioStr + "T00:00:00");
     const fim = new Date(fimStr + "T00:00:00");
@@ -629,7 +668,6 @@ function buscarRelatorio() {
     const tBodyEscalas = document.getElementById('corpoRelEscalas');
     const tBodyPontos = document.getElementById('corpoRelPontos');
 
-    // Converte datas "DD/MM/AAAA" do db para comparar objetos Date reais
     const converterDataParaObjeto = (txt) => {
         const [d, m, a] = txt.split('/').map(Number);
         return new Date(a, m - 1, d);
@@ -647,22 +685,24 @@ function buscarRelatorio() {
                 <td>${e.Data}</td>
                 <td>${e.Hora}</td>
             </tr>
-        `).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">Sem registros</td></tr>';
+        `).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">Nenhum registro encontrado</td></tr>';
     }
 
     if(tBodyPontos) {
-        let listagemPontosHtml = "";
+        let htmlAcumulado = "";
         filtrados.forEach(e => {
-            if(e.Entrada !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Entrada: ${e.Entrada}</td></tr>`;
-            if(e.Intervalo !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Intervalo: ${e.Intervalo}</td></tr>`;
-            if(e.Volta !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Volta: ${e.Volta}</td></tr>`;
-            if(e.Saída !== "--") listagemPontosHtml += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Saída: ${e.Saída}</td></tr>`;
+            if(e.Entrada !== "--") htmlAcumulado += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Entrada: ${e.Entrada}</td></tr>`;
+            if(e.Intervalo !== "--") htmlAcumulado += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Intervalo: ${e.Intervalo}</td></tr>`;
+            if(e.Volta !== "--") htmlAcumulado += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Volta: ${e.Volta}</td></tr>`;
+            if(e.Saída !== "--") htmlAcumulado += `<tr><td class="text-start ps-4"><strong>${e.Nome}</strong></td><td>${e.Data}</td><td>Saída: ${e.Saída}</td></tr>`;
         });
-        tBodyPontos.innerHTML = listagemPontosHtml || '<tr><td colspan="3" class="text-center text-muted py-3">Sem batidas</td></tr>';
+        tBodyPontos.innerHTML = htmlAcumulado || '<tr><td colspan="3" class="text-center text-muted py-3">Nenhuma batida registrada</td></tr>';
     }
 }
 
-// --- EXPORTAÇÕES EXCEL NATIVAS (HTML TABLE PARA DATA URI) ---
+// ==========================================
+// 7. EXPORTAÇÕES DE RELATÓRIOS PARA PLANILHAS
+// ==========================================
 function exportarExcel() {
     const filtro = document.getElementById('filtroDataAdmin').value;
     const tabela = document.querySelector("#screenAdmin .glass-card:nth-of-type(2) table");
@@ -696,10 +736,37 @@ function exportarRelatorioMensal(tipo) {
     document.body.removeChild(link);
 }
 
-// --- NAVEGAÇÃO E REGRAS DE SEGURANÇA INTERNAS ---
+// ==========================================
+// 8. ELEMENTOS DE UTENSÍLIO E MÁSCARAS NATIVAS
+// ==========================================
 function verificarCPFAdmin() { verificarEGravarPonto(); }
 function abrirModalCad() { const m = document.getElementById('modalCad'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
 function abrirModalRelatorio() { const m = document.getElementById('modalRelatorio'); if(m) bootstrap.Modal.getOrCreateInstance(m).show(); }
+
+function atualizarRelogio() { 
+    const c = document.getElementById('clock'); 
+    if(c) c.innerText = new Date().toLocaleTimeString('pt-BR'); 
+}
+
+function focarInputCPF() { 
+    setTimeout(() => { 
+        const input = document.getElementById('cpfIn'); 
+        if (input && document.getElementById('screenPonto').classList.contains('active')) input.focus(); 
+    }, 200); 
+}
+
+function mascaraCPF(e) {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = v;
+}
+
+function formatarData(el) {
+    let v = el.value.replace(/\D/g, '').slice(0, 8);
+    if(v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+    else if(v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+    el.value = v;
+}
 
 function criarModalAlertaDinamico() {
     if (document.getElementById('modalAlertaDinamico')) return;
@@ -721,25 +788,16 @@ function exibirAlerta(titulo, msg, tipo) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAlertaDinamico')).show();
 }
 
-function mascaraCPF(e) {
-    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    e.target.value = v;
+function criarLoaderDinamico() { 
+    if (document.getElementById('appLoaderGlobal')) return; 
+    document.body.insertAdjacentHTML('beforeend', `<div id="appLoaderGlobal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;"><div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div><span class="mt-3 fw-bold text-dark">Atualizando dados...</span></div>`); 
 }
-
-function formatarData(el) {
-    let v = el.value.replace(/\D/g, '').slice(0, 8);
-    if(v.length >= 5) v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
-    else if(v.length >= 3) v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
-    el.value = v;
-}
-
-function atualizarRelogio() { const c = document.getElementById('clock'); if(c) c.innerText = new Date().toLocaleTimeString('pt-BR'); }
-function focarInputCPF() { setTimeout(() => { const input = document.getElementById('cpfIn'); if (input && document.getElementById('screenPonto').classList.contains('active')) input.focus(); }, 200); }
-function criarLoaderDinamico() { if (document.getElementById('appLoaderGlobal')) return; document.body.insertAdjacentHTML('beforeend', `<div id="appLoaderGlobal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;"><div class="spinner-border text-dark" role="status" style="width: 3rem; height: 3rem;"></div><span class="mt-3 fw-bold text-dark">Atualizando dados...</span></div>`); }
 function mostrarLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'flex'; }
 function esconderLoader() { const l = document.getElementById('appLoaderGlobal'); if (l) l.style.display = 'none'; }
 
+// ==========================================
+// 9. ACESSO E CONTROLE DE TELAS (PROTECÇÃO)
+// ==========================================
 function validarSenha() {
     if (document.getElementById('adminPass').value === "1234") {
         document.getElementById('screenPonto').classList.remove('active');
@@ -748,7 +806,9 @@ function validarSenha() {
         bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
         document.getElementById('adminPass').value = '';
         renderAdmin();
-    } else { exibirAlerta("Erro", "Senha incorreta", "erro"); }
+    } else { 
+        exibirAlerta("Erro", "Senha incorreta", "erro"); 
+    }
 }
 
 function sairAdmin() {
