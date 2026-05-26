@@ -360,7 +360,7 @@ let dbEscalas = [];
 
 window.onload = () => {
     criarModalAlertaDinamico();
-    criarLoaderDinamico(); // Inicializa o elemento de carregamento escondido
+    criarLoaderDinamico(); 
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     
@@ -370,19 +370,24 @@ window.onload = () => {
         elementoDataFull.innerText = dataHoje.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase() + ", " + dataHoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    // Define a data padrão do input do painel administrativo (formato ISO exigido pelo navegador: AAAA-MM-DD)
+    // 1. Força a data padrão no input do painel (padrão que o HTML aceita: AAAA-MM-DD)
     const ano = dataHoje.getFullYear();
     const mes = String(dataHoje.getMonth() + 1).padStart(2, '0');
     const dia = String(dataHoje.getDate()).padStart(2, '0');
     const hojeInputISO = `${ano}-${mes}-${dia}`;
     
-    if(document.getElementById('filtroDataAdmin')) {
-        document.getElementById('filtroDataAdmin').value = hojeInputISO;
+    const filtroInput = document.getElementById('filtroDataAdmin');
+    if (filtroInput) {
+        filtroInput.value = hojeInputISO;
+        // Escuta qualquer mudança manual do usuário no calendário para atualizar na hora
+        filtroInput.addEventListener('change', renderAdmin);
+        filtroInput.addEventListener('input', renderAdmin);
     }
 
     document.getElementById('cpfIn')?.addEventListener('input', (e) => { mascaraCPF(e); });
     document.getElementById('cadCPF')?.addEventListener('input', (e) => { mascaraCPF(e); });
     
+    // 2. Dispara a carga inicial do banco de dados
     carregarDados();
     setInterval(renderAdmin, 60000);
     focarInputCPF();
@@ -399,7 +404,6 @@ function focarInputCPF() {
     }, 200);
 }
 
-// --- FUNÇÕES DO CARREGANDO (LOADER DINÂMICO) ---
 function criarLoaderDinamico() {
     if (document.getElementById('appLoaderGlobal')) return;
     const loaderHtml = `
@@ -493,7 +497,7 @@ async function verificarEGravarPonto() {
     if (horariosExistentes.length > 0) {
         const ultimaBatidaStr = horariosExistentes[horariosExistentes.length - 1];
         const minutosUltima = extrairMinutos(ultimaBatidaStr);
-        if ((minutesAtual - minutosUltima) < 40) {
+        if ((minutesAtual - minutesUltima) < 40) {
             exibirAlerta("Aviso", `${colab.Nome} já registrou a ${horariosExistentes.length === 1 ? 'entrada' : 'última batida'} às ${ultimaBatidaStr}`, "info");
             input.value = "";
             return;
@@ -520,7 +524,7 @@ async function verificarEGravarPonto() {
     } 
     else if (tipo === "Volta") {
         const minutosIntervalo = extrairMinutos(colab.Intervalo);
-        if ((minutesAtual - minutosIntervalo) < 40) {
+        if ((minutesAtual - minutesIntervalo) < 40) {
             exibirAlerta("Bloqueado", "Ao ir para o intervalo não pode voltar antes de 40 minutos.", "erro");
             input.value = ""; return;
         }
@@ -553,18 +557,23 @@ function carregarDados() {
 }
 
 function retornoEscalas(dados) { 
-    dbEscalas = dados; 
+    dbEscalas = dados || []; 
+    // Garante a renderização imediata assim que os dados chegarem da nuvem
     renderAdmin(); 
     esconderLoader(); 
 }
 
 function renderAdmin() {
     let filtroBruto = document.getElementById('filtroDataAdmin')?.value;
-    if(!filtroBruto) return;
+    
+    // Fallback de emergência: se o input estiver vazio por algum motivo, usa a data de hoje no formato BR
+    if(!filtroBruto) {
+        filtroBruto = new Date().toLocaleDateString('pt-BR');
+    }
     
     let filtro = filtroBruto;
     
-    // Normalização indispensável: converte "AAAA-MM-DD" do input calendar para "DD/MM/AAAA"
+    // Tratamento estrito do input HTML (Converte AAAA-MM-DD para DD/MM/AAAA)
     if (filtroBruto.includes('-')) {
         const partes = filtroBruto.split('-');
         if (partes[0].length === 4) {
@@ -577,9 +586,9 @@ function renderAdmin() {
     const agora = new Date();
     const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    // Filtra diretamente com base no texto puro gerado pelo getDisplayValues()
-    const escDia = dbEscalas.filter(e => String(e.Data).trim() === filtro);
-    const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === filtro && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
+    // Cruzamento direto com o JSON limpo que veio do Apps Script
+    const escDia = dbEscalas.filter(e => String(e.Data).trim() === String(filtro).trim());
+    const ptsDiaReal = dbEscalas.filter(e => String(e.Data).trim() === String(filtro).trim() && e.Entrada && e.Entrada.trim() !== "" && e.Entrada.trim() !== "--");
     const cpfsPresentes = ptsDiaReal.map(e => e.CPF);
 
     const faltasEfetivas = escDia.filter(e => {
@@ -589,10 +598,12 @@ function renderAdmin() {
         return (minutosAgora > (h * 60 + m + 10));
     });
 
+    // Injeta os dados nas caixas de contagem
     if(document.getElementById('countEscalados')) document.getElementById('countEscalados').innerText = escDia.length;
     if(document.getElementById('countPresentes')) document.getElementById('countPresentes').innerText = cpfsPresentes.length;
     if(document.getElementById('countFaltas')) document.getElementById('countFaltas').innerText = faltasEfetivas.length;
 
+    // Mini listas (cards auxiliares)
     const listEscalados = document.getElementById('listEscalados');
     if(listEscalados) listEscalados.innerHTML = escDia.map(e => `<div>${e.Nome} (${e.Hora})</div>`).join('') || 'Ninguém';
     const listPresentes = document.getElementById('listPresentes');
@@ -600,29 +611,39 @@ function renderAdmin() {
     const listFaltas = document.getElementById('listFaltas');
     if(listFaltas) listFaltas.innerHTML = faltasEfetivas.map(f => `<div>${f.Nome}</div>`).join('') || 'Ninguém';
 
+    // RENDERIZAÇÃO DA TABELA 1: ESCALADOS
     const tabEscalados = document.getElementById('tabEscalados');
     if (tabEscalados) {
-        tabEscalados.innerHTML = escDia.map(e => `
-            <tr>
-                <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
-                <td class="text-center align-middle">${e.Hora}</td>
-                <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
-            </tr>
-        `).join('') || '<tr><td colspan="3" class="text-center py-3">Nenhuma escala para este dia.</td></tr>';
+        if(escDia.length === 0) {
+            tabEscalados.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">Nenhuma escala localizada para o dia ${filtro}.</td></tr>`;
+        } else {
+            tabEscalados.innerHTML = escDia.map(e => `
+                <tr>
+                    <td class="text-start ps-3"><strong>${e.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${e.CPF}</small></td>
+                    <td class="text-center align-middle">${e.Hora}</td>
+                    <td class="text-center align-middle"><i class="bi bi-trash text-danger" style="cursor:pointer;" onclick="deletarEscala(${e.Linha})"></i></td>
+                </tr>
+            `).join('');
+        }
     }
 
+    // RENDERIZAÇÃO DA TABELA 2: STATUS ACOMPANHAMENTO DOS PONTOS
     const tabStatus = document.getElementById('tabStatus');
     if (tabStatus) {
-        tabStatus.innerHTML = ptsDiaReal.map(p => `
-            <tr>
-                <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
-                <td class="text-center align-middle">${p.Entrada || '--'}</td>
-                <td class="text-center align-middle">${p.Intervalo || '--'}</td>
-                <td class="text-center align-middle">${p.Volta || '--'}</td>
-                <td class="text-center align-middle">${p.Saída || '--'}</td>
-                <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
-            </tr>
-        `).join('') || '<tr><td colspan="6" class="text-center py-3">Nenhum ponto registrado para este dia.</td></tr>';
+        if(ptsDiaReal.length === 0) {
+            tabStatus.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum registro de ponto efetuado no dia ${filtro}.</td></tr>`;
+        } else {
+            tabStatus.innerHTML = ptsDiaReal.map(p => `
+                <tr>
+                    <td class="text-start ps-3 align-middle"><strong>${p.Nome}</strong><br><small class="text-muted" style="font-size:11px;">${p.CPF}</small></td>
+                    <td class="text-center align-middle">${p.Entrada || '--'}</td>
+                    <td class="text-center align-middle">${p.Intervalo || '--'}</td>
+                    <td class="text-center align-middle">${p.Volta || '--'}</td>
+                    <td class="text-center align-middle">${p.Saída || '--'}</td>
+                    <td class="text-center align-middle"><i class="bi bi-pencil text-primary" style="cursor:pointer;"></i></td>
+                </tr>
+            `).join('');
+        }
     }
 }
 
@@ -637,7 +658,7 @@ function abrirModalRelatorio() {
 }
 
 function syncDate(valor, idAlvo) {
-    if (!valor) return;
+    // Força atualização em tempo real ao mudar a data pelo input alternativo
     renderAdmin();
 }
 
@@ -736,6 +757,8 @@ function validarSenha() {
         document.getElementById('btnSairHeader').style.display = 'block';
         bootstrap.Modal.getInstance(document.getElementById('modalSenha')).hide();
         document.getElementById('adminPass').value = '';
+        // Força redesenhar o painel assim que entra no modo ADM
+        renderAdmin();
     } else { exibirAlerta("Erro", "Senha incorreta", "erro"); }
 }
 
