@@ -21,7 +21,10 @@
         .login-box { background-color: #f8f9fa; border: 1px solid #f0f0f0; border-radius: 40px; padding: 40px 20px; width: 92%; max-width: 650px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
         #cpf-input { width: 100%; font-size: 1.85rem; text-align: center; font-weight: 800; letter-spacing: 1px; color: #1a1a1a; border: 4px solid #ffda6a; border-radius: 40px; padding: 22px 10px; background-color: #ffffff; box-shadow: 0 0 0 6px #d0e4ff; transition: all 0.2s ease-in-out; }
         #cpf-input:focus { outline: none; box-shadow: 0 0 0 8px #a3cfff; } #cpf-input:disabled { background-color: #e9ecef; cursor: not-allowed; }
-        #tela-dashboard { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; background-color: #f8f9fa; min-height: 100vh; }
+        
+        /* Modificação: Largura total do Dashboard */
+        #tela-dashboard { display: none; padding: 20px 3%; max-width: 100%; margin: 0 auto; background-color: #f8f9fa; min-height: 100vh; }
+        
         .header-painel { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
         .logo-pg { display: inline-flex; align-items: center; justify-content: center; background-color: #1a1a1a; color: #fff; font-weight: bold; border-radius: 8px; width: 40px; height: 40px; margin-right: 10px; font-size: 1.2rem; }
         .header-actions { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 15px; }
@@ -33,7 +36,7 @@
         .nav-tabs-custom { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 25px; }
         .nav-tab-item { padding: 10px 20px; font-weight: 700; color: #888; border-bottom: 3px solid transparent; cursor: pointer; }
         .nav-tab-item.active { color: #1a1a1a; border-bottom-color: #0d6efd; } 
-        .dash-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 15px 20px; display: flex; align-items: center; cursor: pointer; border-left: 5px solid transparent; margin-bottom: 15px; transition: transform 0.3s ease; }
+        .dash-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 15px 20px; display: flex; align-items: center; cursor: pointer; border-left: 5px solid transparent; margin-bottom: 15px; transition: transform 0.3s ease; height: 100%; }
         .dash-card:hover, .dash-card:active { transform: translateY(-6px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
         .dash-card .icon-area { font-size: 2rem; margin-right: 15px; width: 40px; text-align: center; }
         .dash-card .info-area h6 { font-size: 0.75rem; font-weight: 700; color: #6c757d; margin: 0; letter-spacing: 0.5px; }
@@ -86,6 +89,17 @@
         
         .btn-export-print { color: #0d6efd !important; border-color: #0d6efd !important; }
         .btn-export-print:hover { border-color: #0b5ed7 !important; color: #0b5ed7 !important; }
+
+        /* Media Query para telas grandes (Aumentar fontes e ocupar espaço) */
+        @media (min-width: 1400px) {
+            #tela-dashboard { padding: 30px 5%; }
+            .dash-card .info-area h2 { font-size: 2.3rem; }
+            .dash-card .icon-area { font-size: 2.3rem; }
+            .list-row .col-nome .nome { font-size: 1.15rem; }
+            .col-hora, .table-timeline td { font-size: 1.1rem; }
+            .table-timeline th { font-size: 0.85rem; }
+            .section-title { font-size: 1.4rem; }
+        }
 
     </style>
 </head>
@@ -147,7 +161,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white p-4"><button type="button" class="btn btn-outline-light btn-sm me-4" onclick="voltarParaOpcoes()">⬅️ Voltar</button><div class="flex-grow-1"><h4 class="fw-bold m-0" id="rep-ind-nome">NOME</h4><div class="text-white-50" id="rep-ind-cpf">CPF</div></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body p-4 bg-light">
-                    <div class="container" style="max-width: 950px;">
+                    <div class="container-fluid px-3 px-lg-5">
                         <div class="card card-body filter-section border-0 shadow-sm rounded-4 p-4 mb-4">
                             <div class="row g-3 align-items-end">
                                 <div class="col-6"><label class="form-label small fw-bold">INICIAL</label><input type="date" class="form-control" id="rep-ind-data-ini"></div>
@@ -196,24 +210,24 @@
         <div class="nav-tabs-custom"><div class="nav-tab-item active" id="tab-dash" onclick="alternarAbas('dash')">DASHBOARD</div><div class="nav-tab-item" id="tab-relatorios" onclick="alternarAbas('relatorios')">RELATÓRIOS</div></div>
         
         <div id="conteudo-dash">
-            <div class="row g-2 mb-4">
-                <div class="col-6 col-md-4"><div class="dash-card border-blue" onclick="abrirModalDetalhesDash('Escalados')"><div class="icon-area">📋</div><div class="info-area"><h6>REGISTRADOS</h6><h2 id="dash-card-escalados">0</h2></div></div></div>
-                <div class="col-6 col-md-4"><div class="dash-card border-green" onclick="abrirModalDetalhesDash('Trabalhando')"><div class="icon-area">🟢</div><div class="info-area"><h6>TRABALHANDO</h6><h2 id="dash-card-trabalhando">0</h2></div></div></div>
-                <div class="col-6 col-md-4"><div class="dash-card border-dark" onclick="abrirModalDetalhesDash('Intervalo')"><div class="icon-area">☕</div><div class="info-area"><h6>INTERVALO</h6><h2 id="dash-card-intervalo">0</h2></div></div></div>
-                <div class="col-6 col-md-6"><div class="dash-card border-yellow" onclick="abrirModalDetalhesDash('Atrasos')"><div class="icon-area">⏰</div><div class="info-area"><h6>ATRASOS</h6><h2 id="dash-card-atrasos">0</h2></div></div></div>
-                <div class="col-12 col-md-6"><div class="dash-card border-red" onclick="abrirModalDetalhesDash('Faltas')"><div class="icon-area">❌</div><div class="info-area"><h6>FALTAS</h6><h2 class="text-red" id="dash-card-faltas">0</h2></div></div></div>
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-4 col-xl"><div class="dash-card border-blue" onclick="abrirModalDetalhesDash('Escalados')"><div class="icon-area">📋</div><div class="info-area"><h6>REGISTRADOS</h6><h2 id="dash-card-escalados">0</h2></div></div></div>
+                <div class="col-6 col-md-4 col-xl"><div class="dash-card border-green" onclick="abrirModalDetalhesDash('Trabalhando')"><div class="icon-area">🟢</div><div class="info-area"><h6>TRABALHANDO</h6><h2 id="dash-card-trabalhando">0</h2></div></div></div>
+                <div class="col-6 col-md-4 col-xl"><div class="dash-card border-dark" onclick="abrirModalDetalhesDash('Intervalo')"><div class="icon-area">☕</div><div class="info-area"><h6>INTERVALO</h6><h2 id="dash-card-intervalo">0</h2></div></div></div>
+                <div class="col-6 col-md-6 col-xl"><div class="dash-card border-yellow" onclick="abrirModalDetalhesDash('Atrasos')"><div class="icon-area">⏰</div><div class="info-area"><h6>ATRASOS</h6><h2 id="dash-card-atrasos">0</h2></div></div></div>
+                <div class="col-12 col-md-6 col-xl"><div class="dash-card border-red" onclick="abrirModalDetalhesDash('Faltas')"><div class="icon-area">❌</div><div class="info-area"><h6>FALTAS</h6><h2 class="text-red" id="dash-card-faltas">0</h2></div></div></div>
             </div>
             
-            <h3 class="section-title text-center">Escalados(<span id="lbl-tabela-data">Hoje</span>)</h3>
+            <h3 class="section-title text-center mt-5">Escalados(<span id="lbl-tabela-data">Hoje</span>)</h3>
             <div class="list-container">
                 <div class="list-header"><div class="col-nome">COLABORADOR</div><div class="col-hora">TURNO</div><div class="col-status text-center">STATUS / AÇÃO</div></div>
                 <div id="lista-escalados-conteudo"></div>
             </div>
             
-            <h3 class="section-title text-center">Registros de Ponto</h3>
+            <h3 class="section-title text-center mt-5">Registros de Ponto</h3>
             <div class="timeline-container mb-5">
                 <div class="table-responsive">
-                    <table class="table table-hover table-timeline align-middle mb-0">
+                    <table class="table table-hover table-timeline align-middle mb-0 w-100">
                         <thead><tr><th>COLABORADOR</th><th class="text-center">ENTRADA</th><th class="text-center">INTERVALO</th><th class="text-center">RETORNO</th><th class="text-center">SAÍDA</th><th class="text-center">AÇÕES</th></tr></thead>
                         <tbody id="lista-linha-tempo"></tbody>
                     </table>
@@ -243,10 +257,10 @@
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-danger h-100"><h6 class="small fw-bold text-muted mb-1">FALTAS</h6><h3 class="fw-bold m-0 text-danger" id="card-admin-faltas">0</h3></div></div>
-                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-success h-100"><h6 class="small fw-bold text-muted mb-1">NO HORÁRIO</h6><h3 class="fw-bold m-0 text-success" id="card-admin-nohorario">0</h3></div></div>
-                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-warning h-100"><h6 class="small fw-bold text-muted mb-1">ATRASOS</h6><h3 class="fw-bold m-0 text-warning" id="card-admin-atrasos">0</h3></div></div>
-                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-dark h-100"><h6 class="small fw-bold text-muted mb-1">EFETIVOS</h6><h3 class="fw-bold m-0 text-dark" id="card-admin-total">0</h3></div></div>
+                <div class="col-6 col-md-3 col-xl"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-danger h-100"><h6 class="small fw-bold text-muted mb-1">FALTAS</h6><h3 class="fw-bold m-0 text-danger" id="card-admin-faltas">0</h3></div></div>
+                <div class="col-6 col-md-3 col-xl"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-success h-100"><h6 class="small fw-bold text-muted mb-1">NO HORÁRIO</h6><h3 class="fw-bold m-0 text-success" id="card-admin-nohorario">0</h3></div></div>
+                <div class="col-6 col-md-3 col-xl"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-warning h-100"><h6 class="small fw-bold text-muted mb-1">ATRASOS</h6><h3 class="fw-bold m-0 text-warning" id="card-admin-atrasos">0</h3></div></div>
+                <div class="col-6 col-md-3 col-xl"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-dark h-100"><h6 class="small fw-bold text-muted mb-1">EFETIVOS</h6><h3 class="fw-bold m-0 text-dark" id="card-admin-total">0</h3></div></div>
             </div>
 
             <div class="d-flex flex-column gap-3 mb-4 bg-white p-4 rounded-4 shadow-sm">
@@ -254,14 +268,14 @@
                 <div id="botoes-exportacao-admin" class="botoes-exportacao-container"></div>
             </div>
 
-            <table class="table d-none" id="tbl-export-admin-master"><thead><tr><th>Colaborador</th><th>Categoria</th><th>Data</th><th>Detalhes</th><th>Status</th></tr></thead><tbody></tbody></table>
+            <table class="table d-none w-100" id="tbl-export-admin-master"><thead><tr><th>Colaborador</th><th>Categoria</th><th>Data</th><th>Detalhes</th><th>Status</th></tr></thead><tbody></tbody></table>
 
-            <div class="bg-white p-4 rounded-4 shadow-sm mb-4"><h5 class="fw-bold text-danger mb-3">❌ Faltas</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-faltas"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Horário</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="bg-white p-4 rounded-4 shadow-sm mb-4"><h5 class="fw-bold text-danger mb-3">❌ Faltas</h5><div class="table-responsive"><table class="table table-hover w-100" id="tbl-admin-faltas"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Horário</th></tr></thead><tbody></tbody></table></div></div>
             <div class="row g-4 mb-4">
-                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-success mb-3">🟢 No Horário</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-nohorario"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Batida</th><th>Status</th></tr></thead><tbody></tbody></table></div></div></div>
-                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-warning mb-3">⏰ Atrasos</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-atrasos"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Efetivo</th><th>Atraso</th></tr></thead><tbody></tbody></table></div></div></div>
+                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-success mb-3">🟢 No Horário</h5><div class="table-responsive"><table class="table table-hover w-100" id="tbl-admin-nohorario"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Batida</th><th>Status</th></tr></thead><tbody></tbody></table></div></div></div>
+                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-warning mb-3">⏰ Atrasos</h5><div class="table-responsive"><table class="table table-hover w-100" id="tbl-admin-atrasos"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Efetivo</th><th>Atraso</th></tr></thead><tbody></tbody></table></div></div></div>
             </div>
-            <div class="bg-white p-4 rounded-4 shadow-sm mb-5"><h5 class="fw-bold text-dark mb-3">📋 Jornada Completa</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-jornada"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Entrada</th><th>Intervalo</th><th>Retorno</th><th>Saída</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="bg-white p-4 rounded-4 shadow-sm mb-5"><h5 class="fw-bold text-dark mb-3">📋 Jornada Completa</h5><div class="table-responsive"><table class="table table-hover w-100" id="tbl-admin-jornada"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Entrada</th><th>Intervalo</th><th>Retorno</th><th>Saída</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
         </div>
     </div>
 
@@ -477,7 +491,6 @@
                     bancoColaboradores.push(obj);
                 });
 
-                // Alimenta o Dropdown de Seleção de Colaborador na Aba Admin Relatórios
                 const selAdminColab = document.getElementById('rep-admin-colab');
                 if(selAdminColab) {
                     selAdminColab.innerHTML = '<option value="">Todos os Colaboradores</option>';
@@ -501,7 +514,6 @@
         }
         setInterval(atualizarRelogio, 1000); atualizarRelogio();
 
-        // Inicializa as datas
         document.getElementById('data-filtro').value = hojeStr;
         document.getElementById('rep-ind-data-ini').value = hojeStr; document.getElementById('rep-ind-data-fim').value = hojeStr;
         document.getElementById('rep-admin-data-ini').value = hojeStr; document.getElementById('rep-admin-data-fim').value = hojeStr;
@@ -557,7 +569,6 @@
 
         function voltarParaOpcoes() { bootstrap.Modal.getInstance(document.getElementById('modalRelatorioUsuario')).hide(); new bootstrap.Modal(document.getElementById('modalOpcoesUsuario')).show(); }
 
-        // --- SISTEMA DE PONTO ---
         function abrirFluxoRegistroPonto() {
             bootstrap.Modal.getInstance(document.getElementById('modalOpcoesUsuario')).hide();
             document.getElementById('lbl-turno-oficial').textContent = usuarioSelecionado.turno;
@@ -620,7 +631,6 @@
             });
         }
 
-        // --- RELATÓRIOS INDIVIDUAIS (VISÃO FUNCIONÁRIO) ---
         function abrirRelatorioIndividual() {
             bootstrap.Modal.getInstance(document.getElementById('modalOpcoesUsuario')).hide();
             document.getElementById('rep-ind-nome').textContent = usuarioSelecionado.nome; document.getElementById('rep-ind-cpf').textContent = usuarioSelecionado.cpf;
@@ -685,7 +695,6 @@
             $('#botoes-exportacao-global').empty().append( mt.buttons().container() );
         }
 
-        // --- DASHBOARD ADMIN ---
         function verificarSenhaAdmin() {
             if (btoa(document.getElementById('senha-admin-input').value) === 'MTIzNA==') {
                 bootstrap.Modal.getInstance(document.getElementById('modalSenhaAdmin')).hide(); document.getElementById('senha-admin-input').value = ''; 
@@ -703,7 +712,6 @@
             }
         }
 
-        // --- FUNÇÕES DE EDIÇÃO NO DASHBOARD ---
         function abrirModalEditarColaborador(cpf) {
             const colab = bancoColaboradores.find(c => c.cpf === cpf);
             if(colab) {
@@ -747,7 +755,6 @@
             document.getElementById('edit-ponto-cpf').value = cpf;
             document.getElementById('edit-ponto-data').value = dataPonto;
 
-            // Bloqueia inputs não preenchidos
             const sets = ['entrada', 'intervalo', 'retorno', 'saida'];
             sets.forEach(etapa => {
                 const inputElement = document.getElementById(`edit-ponto-${etapa}`);
@@ -896,7 +903,6 @@
             new bootstrap.Modal(document.getElementById('modalDetalhesDash')).show();
         }
 
-        // --- NOVO CARREGAMENTO DO RELATÓRIO ADMIN (FORMATO INDIVIDUALIZADO) ---
         function carregarRelatorioAdmin() {
             const dIni = document.getElementById('rep-admin-data-ini').value || hojeStr;
             const dFim = document.getElementById('rep-admin-data-fim').value || hojeStr;
@@ -909,7 +915,7 @@
             let cFaltas = 0, cNoHorario = 0, cAtrasos = 0;
 
             bancoColaboradores.forEach(c => {
-                if (filtroCpf && c.cpf !== filtroCpf) return; // Se escolheu alguém específico, filtra.
+                if (filtroCpf && c.cpf !== filtroCpf) return; 
 
                 c.historico.forEach(h => {
                     if(h.data >= dIni && h.data <= dFim) {
@@ -985,7 +991,6 @@
                 });
                 document.getElementById('cad-nome').value = ''; document.getElementById('cad-cpf').value = '';
                 
-                // Adiciona o novo cara no Select do Relatório
                 const selAdminColab = document.getElementById('rep-admin-colab');
                 if(selAdminColab) {
                     selAdminColab.innerHTML += `<option value="${cpf}">${nome}</option>`;
