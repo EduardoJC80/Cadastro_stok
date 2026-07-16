@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ponto Gold</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    
+    <style>
+        /* ================= BASE ================= */
+        body { background-color: #f8f9fa; color: #1a1a1a; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; margin: 0; padding: 0; }
+        #tela-ponto { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #ffffff; position: relative; }
+        .brand-logo { position: absolute; top: 40px; font-size: 1.2rem; letter-spacing: 1px; }
+        .text-ponto { color: #ffc107; font-weight: 800; } .text-gold { color: #1a1a1a; font-weight: 800; }
+        .clock-display { font-size: 5.5rem; font-weight: 900; color: #1a1a1a; line-height: 1; letter-spacing: 2px; margin-bottom: 15px; }
+        .date-display { font-size: 1.3rem; color: #6c757d; font-weight: 700; margin-bottom: 4rem; }
+        .login-box { background-color: #f8f9fa; border: 1px solid #f0f0f0; border-radius: 40px; padding: 40px 20px; width: 92%; max-width: 650px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+        #cpf-input { width: 100%; font-size: 1.85rem; text-align: center; font-weight: 800; letter-spacing: 1px; color: #1a1a1a; border: 4px solid #ffda6a; border-radius: 40px; padding: 22px 10px; background-color: #ffffff; box-shadow: 0 0 0 6px #d0e4ff; transition: all 0.2s ease-in-out; }
+        #cpf-input:focus { outline: none; box-shadow: 0 0 0 8px #a3cfff; } #cpf-input:disabled { background-color: #e9ecef; cursor: not-allowed; }
+        #tela-dashboard { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; background-color: #f8f9fa; min-height: 100vh; }
+        .header-painel { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+        .logo-pg { display: inline-flex; align-items: center; justify-content: center; background-color: #1a1a1a; color: #fff; font-weight: bold; border-radius: 8px; width: 40px; height: 40px; margin-right: 10px; font-size: 1.2rem; }
+        .header-actions { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 15px; }
+        .date-filter-input { background-color: #0d6efd; color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 0.95rem; cursor: pointer; box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3); height: 42px; }
+        .date-filter-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        .btn-novo-cadastro { background-color: #121212; color: #fff; border-radius: 8px; padding: 0 16px; font-weight: 600; border: none; height: 42px; }
+        .btn-sair { background-color: transparent; color: #dc3545; border: 1px solid #e0e0e0; border-radius: 8px; padding: 0 16px; font-weight: 600; height: 42px; transition: 0.2s;}
+        .btn-sair:hover { background-color: #dc3545; color: #fff; border-color: #dc3545; }
+        .nav-tabs-custom { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 25px; }
+        .nav-tab-item { padding: 10px 20px; font-weight: 700; color: #888; border-bottom: 3px solid transparent; cursor: pointer; }
+        .nav-tab-item.active { color: #1a1a1a; border-bottom-color: #0d6efd; } 
+        .dash-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 15px 20px; display: flex; align-items: center; cursor: pointer; border-left: 5px solid transparent; margin-bottom: 15px; transition: transform 0.3s ease; }
+        .dash-card:hover, .dash-card:active { transform: translateY(-6px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
+        .dash-card .icon-area { font-size: 2rem; margin-right: 15px; width: 40px; text-align: center; }
+        .dash-card .info-area h6 { font-size: 0.75rem; font-weight: 700; color: #6c757d; margin: 0; letter-spacing: 0.5px; }
+        .dash-card .info-area h2 { font-size: 1.8rem; font-weight: 500; margin: 0; color: #1a1a1a; }
+        .border-blue { border-left-color: #0d6efd; } .border-green { border-left-color: #198754; } .border-dark { border-left-color: #212529; } .border-yellow { border-left-color: #ffc107; } .border-red { border-left-color: #dc3545; } .text-red { color: #dc3545 !important; }
+        .section-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 15px; color: #1a1a1a; }
+        .list-container { background: #fff; border-radius: 12px; padding: 0 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 30px; }
+        .list-header { display: flex; font-size: 0.75rem; font-weight: 800; padding: 15px 0; border-bottom: 2px solid #f0f0f0; color: #6c757d; letter-spacing: 0.5px; }
+        .list-row { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
+        .col-nome { flex: 1; } .col-nome .nome { font-weight: 700; font-size: 0.95rem; color: #1a1a1a; } .col-nome .cpf { font-size: 0.8rem; color: #a0a0a0; margin-top: 2px; font-family: monospace;}
+        .col-hora { width: 120px; text-align: center; font-weight: 700; font-size: 0.9rem; color: #495057;} 
+        .col-status { width: 150px; text-align: right; } 
+        .timeline-container { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .table-timeline th { font-size: 0.75rem; color: #6c757d; font-weight: 800; letter-spacing: 0.5px; border-bottom: 2px solid #f0f0f0; }
+        .table-timeline td { vertical-align: middle; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid #f0f0f0; padding: 15px 10px; }
+        .time-cell { text-align: center; color: #1a1a1a; } .time-empty { color: #ccc; }
+        .badge-custom { padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; display: inline-block; text-align: center; min-width: 90px; }
+        .badge-red { background-color: #dc3545; color: #fff; } .badge-green { background-color: #198754; color: #fff; } .badge-dark { background-color: #212529; color: #fff; } .badge-yellow { background-color: #ffc107; color: #1a1a1a; } .badge-secondary { background-color: #6c757d; color: #fff; }
+        .modal-content-custom { border-radius: 24px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.12); overflow: hidden;}
+        .card-list-item { border: 1px solid #e9ecef; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; background-color: #fff; }
+        .cli-info h6 { margin: 0; font-weight: 700; color: #1a1a1a; font-size: 0.95rem; } .cli-info p { margin: 2px 0 0 0; font-size: 0.8rem; color: #6c757d; font-family: monospace; }
+        .ponto-stepper { display: flex; justify-content: space-between; position: relative; margin: 40px 0; padding: 0 10px; }
+        .ponto-stepper::before { content: ''; position: absolute; top: 20px; left: 0; right: 0; height: 4px; background: #e9ecef; z-index: 1; }
+        .ponto-step { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .step-icon { width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 3px solid #dee2e6; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; color: #6c757d; transition: all 0.3s; }
+        .ponto-step.completed .step-icon { background: #198754; border-color: #198754; color: #fff; }
+        .ponto-step.active .step-icon { border-color: #0d6efd; color: #0d6efd; box-shadow: 0 0 0 5px rgba(13,110,253,0.15); }
+        .step-label { font-size: 0.75rem; font-weight: 800; color: #6c757d; margin-top: 8px; text-transform: uppercase; } .step-time { font-size: 0.85rem; font-weight: 700; color: #1a1a1a; margin-top: 2px; } .ponto-step.completed .step-label { color: #198754; }
+        .d-none { display: none !important; }
+
+        .card.filter-section { border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 20px; }
+        
+        .btn-filtrar-custom { height: 42px; padding: 0 25px; text-transform: uppercase; letter-spacing: 1px; background-color: #0d6efd; color: white; border: none; border-radius: 8px; font-weight: 700; transition: all 0.2s; }
+        .btn-filtrar-custom:hover { background-color: #0b5ed7; transform: translateY(-1px); }
+
+        .botoes-exportacao-container { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-around; }
+        .dt-buttons { display: contents; } 
+        
+        .btn-export { border-radius: 8px !important; padding: 10px 18px !important; font-weight: 600 !important; background: white !important; border-width: 1px !important; border-style: solid !important; transition: 0.2s !important; }
+        .btn-export:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important; background: #fff !important; }
+
+        .btn-export-copy { color: #6c757d !important; border-color: #e0e0e0 !important; }
+        .btn-export-copy:hover { border-color: #c0c0c0 !important; }
+        
+        .btn-export-excel { color: #198754 !important; border-color: #198754 !important; }
+        .btn-export-excel:hover { border-color: #157347 !important; color: #157347 !important; }
+        
+        .btn-export-pdf { color: #dc3545 !important; border-color: #dc3545 !important; }
+        .btn-export-pdf:hover { border-color: #bb2d3b !important; color: #bb2d3b !important; }
+        
+        .btn-export-print { color: #0d6efd !important; border-color: #0d6efd !important; }
+        .btn-export-print:hover { border-color: #0b5ed7 !important; color: #0b5ed7 !important; }
+
+    </style>
+</head>
+<body>
+
+    <div id="tela-ponto">
+        <div class="brand-logo"><span class="text-ponto">PONTO</span><span class="text-gold">GOLD</span></div>
+        <div id="relogio" class="clock-display">00:00:00</div>
+        <div id="data-atual" class="date-display">Carregando...</div>
+        <div class="login-box">
+            <input type="text" id="cpf-input" placeholder="Carregando sistema..." autocomplete="off" disabled>
+            <p class="text-muted mt-4 mb-0 small fw-bold">Pressione ENTER para identificar</p>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalOpcoesUsuario" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header bg-dark text-white p-4 border-0">
+                    <div class="w-100">
+                        <h5 class="fw-bold m-0" id="opcoes-nome-colaborador">NOME</h5>
+                        <div class="text-white-50 font-monospace mt-1" style="font-size: 0.85rem;" id="opcoes-cpf-colaborador">CPF</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="row g-3">
+                        <div class="col-6"><button class="btn btn-outline-primary w-100 py-3 rounded-4 fw-bold shadow-sm h-100" onclick="abrirFluxoRegistroPonto()"><span style="font-size: 1.8rem;" class="mb-2 d-block">⏰</span> Registrar Ponto</button></div>
+                        <div class="col-6"><button class="btn btn-outline-dark w-100 py-3 rounded-4 fw-bold shadow-sm h-100" onclick="abrirRelatorioIndividual()"><span style="font-size: 1.8rem;" class="mb-2 d-block">📊</span> Ver Relatório</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalRegistrarPonto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header bg-primary text-white p-4 border-0">
+                    <h5 class="fw-bold m-0">Registro de Jornada</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center bg-light p-3 rounded-4 mb-4"><span class="text-muted small fw-bold d-block">HORÁRIO OFICIAL</span><h4 class="fw-bold text-dark m-0" id="lbl-turno-oficial">08:30</h4></div>
+                    <div class="ponto-stepper">
+                        <div class="ponto-step" id="step-entrada"><div class="step-icon">1</div><div class="step-label">Entrada</div><div class="step-time" id="time-entrada">--:--</div></div>
+                        <div class="ponto-step" id="step-intervalo"><div class="step-icon">2</div><div class="step-label">Intervalo</div><div class="step-time" id="time-intervalo">--:--</div></div>
+                        <div class="ponto-step" id="step-retorno"><div class="step-icon">3</div><div class="step-label">Retorno</div><div class="step-time" id="time-retorno">--:--</div></div>
+                        <div class="ponto-step" id="step-saida"><div class="step-icon">4</div><div class="step-label">Saída</div><div class="step-time" id="time-saida">--:--</div></div>
+                    </div>
+                    <button class="btn btn-success btn-lg w-100 py-3 rounded-4 fw-bold fs-5 mt-4" onclick="confirmarBatidaPonto()">Confirmar Marcação</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalRelatorioUsuario" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white p-4"><button type="button" class="btn btn-outline-light btn-sm me-4" onclick="voltarParaOpcoes()">⬅️ Voltar</button><div class="flex-grow-1"><h4 class="fw-bold m-0" id="rep-ind-nome">NOME</h4><div class="text-white-50" id="rep-ind-cpf">CPF</div></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="container" style="max-width: 950px;">
+                        <div class="card card-body filter-section border-0 shadow-sm rounded-4 p-4 mb-4">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-6"><label class="form-label small fw-bold">INICIAL</label><input type="date" class="form-control" id="rep-ind-data-ini"></div>
+                                <div class="col-6"><label class="form-label small fw-bold">FINAL</label><input type="date" class="form-control" id="rep-ind-data-fim"></div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button class="btn-filtrar-custom" onclick="filtrarRelatorioIndividual()">FILTRAR RELATÓRIO</button>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-danger h-100"><h6 class="small fw-bold text-muted mb-1">FALTAS</h6><h3 class="fw-bold m-0 text-danger" id="card-ind-faltas">0</h3></div></div>
+                            <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-success h-100"><h6 class="small fw-bold text-muted mb-1">NO HORÁRIO</h6><h3 class="fw-bold m-0 text-success" id="card-ind-nohorario">0</h3></div></div>
+                            <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-warning h-100"><h6 class="small fw-bold text-muted mb-1">ATRASOS</h6><h3 class="fw-bold m-0 text-warning" id="card-ind-atrasos">0</h3></div></div>
+                            <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-dark h-100"><h6 class="small fw-bold text-muted mb-1">EFETIVOS</h6><h3 class="fw-bold m-0 text-dark" id="card-ind-total">0</h3></div></div>
+                        </div>
+                        
+                        <div class="d-flex flex-column gap-3 mb-4 bg-white p-4 rounded-4 shadow-sm">
+                            <h5 class="fw-bold text-dark m-0">Exportar</h5>
+                            <div id="botoes-exportacao-global" class="botoes-exportacao-container"></div>
+                        </div>
+                        
+                        <table class="table d-none" id="tbl-export-master"><thead><tr><th>Categoria</th><th>Data</th><th>Detalhes</th><th>Status</th></tr></thead><tbody></tbody></table>
+                        
+                        <div class="bg-white p-4 rounded-4 shadow-sm mb-4"><h5 class="fw-bold text-danger mb-3">❌ Faltas</h5><div class="table-responsive"><table class="table table-hover" id="tbl-ind-faltas"><thead><tr class="table-light"><th>Data</th><th>Horário</th></tr></thead><tbody></tbody></table></div></div>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-success mb-3">🟢 No Horário</h5><div class="table-responsive"><table class="table table-hover" id="tbl-ind-nohorario"><thead><tr class="table-light"><th>Data</th><th>Batida</th><th>Status</th></tr></thead><tbody></tbody></table></div></div></div>
+                            <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-warning mb-3">⏰ Atrasos</h5><div class="table-responsive"><table class="table table-hover" id="tbl-ind-atrasos"><thead><tr class="table-light"><th>Data</th><th>Efetivo</th><th>Atraso</th></tr></thead><tbody></tbody></table></div></div></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-4 shadow-sm mb-5"><h5 class="fw-bold text-dark mb-3">📋 Jornada Completa</h5><div class="table-responsive"><table class="table table-hover" id="tbl-ind-jornada"><thead><tr class="table-light"><th>Data</th><th>Entrada</th><th>Intervalo</th><th>Retorno</th><th>Saída</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-dashboard">
+        <div class="header-painel">
+            <div class="d-flex align-items-center justify-content-center"><div class="logo-pg">PG</div><h4 class="mb-0 fw-bold">Painel Admin</h4></div>
+            <div class="header-actions">
+                <input type="date" class="date-filter-input" id="data-filtro" title="Filtrar por data">
+                <button class="btn-novo-cadastro" data-bs-toggle="modal" data-bs-target="#modalCadastro">Novo Cadastro</button>
+                <button class="btn-sair" onclick="voltarParaPonto()">Sair</button>
+            </div>
+        </div>
+        <div class="nav-tabs-custom"><div class="nav-tab-item active" id="tab-dash" onclick="alternarAbas('dash')">DASHBOARD</div><div class="nav-tab-item" id="tab-relatorios" onclick="alternarAbas('relatorios')">RELATÓRIOS</div></div>
+        
+        <div id="conteudo-dash">
+            <div class="row g-2 mb-4">
+                <div class="col-6 col-md-4"><div class="dash-card border-blue" onclick="abrirModalDetalhesDash('Escalados')"><div class="icon-area">📋</div><div class="info-area"><h6>REGISTRADOS</h6><h2 id="dash-card-escalados">0</h2></div></div></div>
+                <div class="col-6 col-md-4"><div class="dash-card border-green" onclick="abrirModalDetalhesDash('Trabalhando')"><div class="icon-area">🟢</div><div class="info-area"><h6>TRABALHANDO</h6><h2 id="dash-card-trabalhando">0</h2></div></div></div>
+                <div class="col-6 col-md-4"><div class="dash-card border-dark" onclick="abrirModalDetalhesDash('Intervalo')"><div class="icon-area">☕</div><div class="info-area"><h6>INTERVALO</h6><h2 id="dash-card-intervalo">0</h2></div></div></div>
+                <div class="col-6 col-md-6"><div class="dash-card border-yellow" onclick="abrirModalDetalhesDash('Atrasos')"><div class="icon-area">⏰</div><div class="info-area"><h6>ATRASOS</h6><h2 id="dash-card-atrasos">0</h2></div></div></div>
+                <div class="col-12 col-md-6"><div class="dash-card border-red" onclick="abrirModalDetalhesDash('Faltas')"><div class="icon-area">❌</div><div class="info-area"><h6>FALTAS</h6><h2 class="text-red" id="dash-card-faltas">0</h2></div></div></div>
+            </div>
+            
+            <h3 class="section-title text-center">Escalados(<span id="lbl-tabela-data">Hoje</span>)</h3>
+            <div class="list-container">
+                <div class="list-header"><div class="col-nome">COLABORADOR</div><div class="col-hora">TURNO</div><div class="col-status text-center">STATUS / AÇÃO</div></div>
+                <div id="lista-escalados-conteudo"></div>
+            </div>
+            
+            <h3 class="section-title text-center">Registros de Ponto</h3>
+            <div class="timeline-container mb-5">
+                <div class="table-responsive">
+                    <table class="table table-hover table-timeline align-middle mb-0">
+                        <thead><tr><th>COLABORADOR</th><th class="text-center">ENTRADA</th><th class="text-center">INTERVALO</th><th class="text-center">RETORNO</th><th class="text-center">SAÍDA</th><th class="text-center">AÇÕES</th></tr></thead>
+                        <tbody id="lista-linha-tempo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div id="conteudo-relatorios" style="display: none;">
+            <div class="card card-body filter-section border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">COLABORADOR</label>
+                        <select class="form-select form-control-lg" id="rep-admin-colab" style="font-size:0.9rem;"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">INICIAL</label>
+                        <input type="date" class="form-control form-control-lg" id="rep-admin-data-ini" style="font-size:0.9rem;">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">FINAL</label>
+                        <input type="date" class="form-control form-control-lg" id="rep-admin-data-fim" style="font-size:0.9rem;">
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn-filtrar-custom" onclick="carregarRelatorioAdmin()">FILTRAR RELATÓRIO GERAL</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-danger h-100"><h6 class="small fw-bold text-muted mb-1">FALTAS</h6><h3 class="fw-bold m-0 text-danger" id="card-admin-faltas">0</h3></div></div>
+                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-success h-100"><h6 class="small fw-bold text-muted mb-1">NO HORÁRIO</h6><h3 class="fw-bold m-0 text-success" id="card-admin-nohorario">0</h3></div></div>
+                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-warning h-100"><h6 class="small fw-bold text-muted mb-1">ATRASOS</h6><h3 class="fw-bold m-0 text-warning" id="card-admin-atrasos">0</h3></div></div>
+                <div class="col-6 col-md-3"><div class="bg-white p-3 rounded-4 shadow-sm border-start border-4 border-dark h-100"><h6 class="small fw-bold text-muted mb-1">EFETIVOS</h6><h3 class="fw-bold m-0 text-dark" id="card-admin-total">0</h3></div></div>
+            </div>
+
+            <div class="d-flex flex-column gap-3 mb-4 bg-white p-4 rounded-4 shadow-sm">
+                <h5 class="fw-bold text-dark m-0">Exportar Tabela Consolidada</h5>
+                <div id="botoes-exportacao-admin" class="botoes-exportacao-container"></div>
+            </div>
+
+            <table class="table d-none" id="tbl-export-admin-master"><thead><tr><th>Colaborador</th><th>Categoria</th><th>Data</th><th>Detalhes</th><th>Status</th></tr></thead><tbody></tbody></table>
+
+            <div class="bg-white p-4 rounded-4 shadow-sm mb-4"><h5 class="fw-bold text-danger mb-3">❌ Faltas</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-faltas"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Horário</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="row g-4 mb-4">
+                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-success mb-3">🟢 No Horário</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-nohorario"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Batida</th><th>Status</th></tr></thead><tbody></tbody></table></div></div></div>
+                <div class="col-md-6"><div class="bg-white p-4 rounded-4 shadow-sm h-100"><h5 class="fw-bold text-warning mb-3">⏰ Atrasos</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-atrasos"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Efetivo</th><th>Atraso</th></tr></thead><tbody></tbody></table></div></div></div>
+            </div>
+            <div class="bg-white p-4 rounded-4 shadow-sm mb-5"><h5 class="fw-bold text-dark mb-3">📋 Jornada Completa</h5><div class="table-responsive"><table class="table table-hover" id="tbl-admin-jornada"><thead><tr class="table-light"><th>Colaborador</th><th>Data</th><th>Entrada</th><th>Intervalo</th><th>Retorno</th><th>Saída</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarColaborador" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header bg-dark text-white p-4 border-0">
+                    <h5 class="modal-title fw-bold m-0">Editar Colaborador</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="edit-colab-cpf-original">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">NOME COMPLETO</label>
+                        <input type="text" id="edit-colab-nome" class="form-control form-control-lg">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">CPF (Não editável)</label>
+                        <input type="text" id="edit-colab-cpf" class="form-control form-control-lg" disabled>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">DATA DE INÍCIO</label>
+                            <input type="date" class="form-control form-control-lg" id="edit-colab-data">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">ENTRADA PADRÃO</label>
+                            <input type="time" class="form-control form-control-lg" id="edit-colab-turno">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="salvarEdicaoColaborador()">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarPonto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header bg-primary text-white p-4 border-0">
+                    <h5 class="modal-title fw-bold m-0">Editar Horários</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="edit-ponto-cpf">
+                    <input type="hidden" id="edit-ponto-data">
+                    <div class="alert alert-warning border-0 small fw-bold text-center">Apenas horários já registrados podem ser editados.</div>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">ENTRADA</label>
+                            <input type="time" class="form-control form-control-lg text-center fw-bold" id="edit-ponto-entrada">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">INTERVALO</label>
+                            <input type="time" class="form-control form-control-lg text-center fw-bold" id="edit-ponto-intervalo">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">RETORNO</label>
+                            <input type="time" class="form-control form-control-lg text-center fw-bold" id="edit-ponto-retorno">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">SAÍDA</label>
+                            <input type="time" class="form-control form-control-lg text-center fw-bold" id="edit-ponto-saida">
+                        </div>
+                    </div>
+                    <button class="btn btn-success btn-lg w-100 fw-bold" onclick="salvarEdicaoPonto()">Salvar Horários</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDetalhesDash" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header border-0 pb-0 pt-4 px-4 d-flex justify-content-between"><h5 class="fw-bold m-0" id="detalhes-dash-titulo">TÍTULO</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body px-4 pb-4 pt-3">
+                    <div class="d-flex justify-content-between mb-2"><span class="fw-bold small text-muted" id="detalhes-dash-contagem">0 DE 0</span><span class="fw-bold small text-muted" id="detalhes-dash-porcentagem">0%</span></div>
+                    <div class="progress mb-4" style="height: 8px;"><div class="progress-bar bg-primary" id="detalhes-dash-barra" style="width: 0%;"></div></div>
+                    <div id="detalhes-dash-lista" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="modalSenhaAdmin" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content modal-content-custom">
+                <div class="modal-header border-0 pt-4 px-4 pb-2"><h5 class="fw-bold m-0">🔑 Acesso Restrito</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body px-4 pb-4 pt-2 text-center">
+                    <input type="password" id="senha-admin-input" class="form-control text-center mb-3" style="font-size:1.5rem;" placeholder="••••">
+                    <button class="btn btn-dark w-100 fw-bold" onclick="verificarSenhaAdmin()">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCadastro" tabindex="-1" aria-hidden="true">
+        <div class="modal-fullscreen modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white p-4"><h5 class="modal-title fw-bold">Novo Colaborador</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4" style="max-width: 600px; margin: 0 auto; width: 100%;">
+                    <div class="mb-4 mt-3"><label class="form-label fw-bold small text-muted">NOME COMPLETO</label><input type="text" id="cad-nome" class="form-control form-control-lg"></div>
+                    <div class="mb-4"><label class="form-label fw-bold small text-muted">CPF</label><input type="text" id="cad-cpf" class="form-control form-control-lg"></div>
+                    <div class="row mb-4">
+                        <div class="col-6"><label class="form-label fw-bold small text-muted">DATA DE INÍCIO</label><input type="date" class="form-control form-control-lg" id="data-cadastro-input"></div>
+                        <div class="col-6"><label class="form-label fw-bold small text-muted">ENTRADA PADRÃO</label><input type="time" class="form-control form-control-lg" id="hora-cadastro-input" value="08:30"></div>
+                    </div>
+                    <button class="btn btn-primary btn-lg w-100 fw-bold mt-4" data-bs-dismiss="modal" onclick="adicionarNovoColaborador()">Salvar Registro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzLlXjExRjHHblDnBkPTn25jP9oFWAqZEMh3ijlx_aEjb6oiNNtpQCX_ShO1BQHtOMmog/exec";
+        let bancoColaboradores = []; let usuarioSelecionado = null;
+
+        function obterDataHojeStr() {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+        }
+        const hojeStr = obterDataHojeStr();
+
+        function normalizarDataStr(dataStr) {
+            if (!dataStr) return ""; 
+            const s = String(dataStr).trim();
+            if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+            if (s.includes('/')) {
+                const p = s.split(' ')[0].split('/'); 
+                if (p.length === 3) {
+                    let ano = p[2]; if (ano.length === 2) ano = "20" + ano;
+                    return `${ano}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+                }
+            }
+            return s.split('T')[0];
+        }
+
+        async function fetchAPI(dados) {
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(dados) });
+                return await response.json();
+            } catch (erro) { return { status: "erro", msg: erro.toString() }; }
+        }
+
+        function converterHoraParaTimestamp(dataStr, horaStr) { return new Date(`${dataStr}T${horaStr}:00`).getTime(); }
+
+        async function inicializarSistema() {
+            const inputCpf = document.getElementById('cpf-input');
+            inputCpf.disabled = true; inputCpf.placeholder = "Carregando sistema...";
+
+            try {
+                const res = await fetch(SCRIPT_URL + "?acao=carregarTudo");
+                const dados = await res.json();
+                bancoColaboradores = [];
+                
+                const colabs = dados.colaboradores ? dados.colaboradores.slice(1) : []; 
+                const regs = dados.registros ? dados.registros.slice(1) : [];
+                const hists = dados.historico ? dados.historico.slice(1) : [];
+
+                colabs.forEach(c => {
+                    const cpf = String(c[2]);
+                    
+                    let dIni = "";
+                    if (c[5]) dIni = normalizarDataStr(c[5]);
+                    if (!dIni && c[4]) dIni = normalizarDataStr(c[4]);
+                    if (!dIni) dIni = hojeStr; 
+
+                    const obj = {
+                        id: c[0], nome: c[1], cpf: cpf, turno: c[3], dataInicio: dIni,
+                        pontoHoje: { entrada: "--:--", intervalo: "--:--", retorno: "--:--", saida: "--:--" },
+                        logsHojeTimestamps: {}, historico: [], registrosGerais: [],
+                        tempDashboardStatus: "", tempBadgeColor: "", tempIsAtraso: false, tempIsEscalado: false
+                    };
+
+                    hists.forEach(h => {
+                        if (String(h[0]) === cpf) {
+                            const dtNorm = normalizarDataStr(h[1]);
+                            if (dtNorm) obj.historico.push({ data: dtNorm, tipo: h[2], detalhe: h[3] });
+                        }
+                    });
+
+                    regs.forEach(r => {
+                        if (String(r[0]) === cpf) {
+                            const dtNorm = normalizarDataStr(r[1]);
+                            if (!dtNorm) return;
+                            
+                            obj.registrosGerais.push({ 
+                                data: dtNorm, entrada: r[2] || "--:--", intervalo: r[3] || "--:--", retorno: r[4] || "--:--", saida: r[5] || "--:--" 
+                            });
+                            if (dtNorm === hojeStr) {
+                                obj.pontoHoje.entrada = r[2] || "--:--"; obj.pontoHoje.intervalo = r[3] || "--:--";
+                                obj.pontoHoje.retorno = r[4] || "--:--"; obj.pontoHoje.saida = r[5] || "--:--";
+                                ['entrada', 'intervalo', 'retorno', 'saida'].forEach(etapa => {
+                                    if(obj.pontoHoje[etapa] !== '--:--') obj.logsHojeTimestamps[etapa] = converterHoraParaTimestamp(hojeStr, obj.pontoHoje[etapa]);
+                                });
+                            }
+                        }
+                    });
+                    bancoColaboradores.push(obj);
+                });
+
+                // Alimenta o Dropdown de Seleção de Colaborador na Aba Admin Relatórios
+                const selAdminColab = document.getElementById('rep-admin-colab');
+                if(selAdminColab) {
+                    selAdminColab.innerHTML = '<option value="">Todos os Colaboradores</option>';
+                    bancoColaboradores.forEach(c => {
+                        selAdminColab.innerHTML += `<option value="${c.cpf}">${c.nome}</option>`;
+                    });
+                }
+
+                inputCpf.disabled = false; inputCpf.placeholder = "000.000.000-00";
+                atualizarDashboardAdmin();
+            } catch (err) { Swal.fire('Erro', 'Falha ao carregar banco de dados.', 'error'); inputCpf.placeholder = "Falha"; }
+        }
+        window.onload = inicializarSistema;
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            document.getElementById('relogio').textContent = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}:${String(agora.getSeconds()).padStart(2, '0')}`;
+            const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            document.getElementById('data-atual').textContent = `${diasSemana[agora.getDay()]}, ${String(agora.getDate()).padStart(2, '0')} de ${meses[agora.getMonth()]} de ${agora.getFullYear()}`;
+        }
+        setInterval(atualizarRelogio, 1000); atualizarRelogio();
+
+        // Inicializa as datas
+        document.getElementById('data-filtro').value = hojeStr;
+        document.getElementById('rep-ind-data-ini').value = hojeStr; document.getElementById('rep-ind-data-fim').value = hojeStr;
+        document.getElementById('rep-admin-data-ini').value = hojeStr; document.getElementById('rep-admin-data-fim').value = hojeStr;
+        
+        document.getElementById('data-filtro').addEventListener('change', () => {
+            if (!document.getElementById('data-filtro').value) document.getElementById('data-filtro').value = hojeStr;
+            atualizarDashboardAdmin(); 
+            if (document.getElementById('tab-relatorios').classList.contains('active')) carregarRelatorioAdmin();
+        });
+
+        const applyCpfMask = (e) => {
+            let v = e.target.value.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11);
+            if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"); else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3"); else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+            e.target.value = v;
+        };
+        document.getElementById('cpf-input').addEventListener('input', applyCpfMask);
+        document.getElementById('cad-cpf').addEventListener('input', applyCpfMask);
+
+        document.getElementById('modalCadastro').addEventListener('show.bs.modal', () => {
+            const agora = new Date(); const tzoffset = agora.getTimezoneOffset() * 60000;
+            document.getElementById('data-cadastro-input').value = new Date(agora.getTime() - tzoffset).toISOString().split('T')[0];
+            document.getElementById('hora-cadastro-input').value = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+        });
+
+        document.getElementById('cpf-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (btoa(this.value) === 'MDAwLjAwMC4wMDAtMDA=') { this.value = ''; new bootstrap.Modal(document.getElementById('modalSenhaAdmin')).show(); return; }
+                
+                const colab = bancoColaboradores.find(c => c.cpf === this.value);
+                
+                if (colab) {
+                    if (colab.dataInicio !== hojeStr) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Acesso Negado',
+                            text: 'Este CPF não está cadastrado para bater o ponto no dia de hoje.',
+                            confirmButtonColor: '#ffc107'
+                        });
+                        this.value = ''; 
+                        return; 
+                    }
+
+                    usuarioSelecionado = colab; 
+                    document.getElementById('opcoes-nome-colaborador').textContent = colab.nome; 
+                    document.getElementById('opcoes-cpf-colaborador').textContent = colab.cpf;
+                    this.value = ''; 
+                    new bootstrap.Modal(document.getElementById('modalOpcoesUsuario')).show();
+                } else { 
+                    Swal.fire({ icon: 'error', title: 'Negado', text: 'CPF não cadastrado!', confirmButtonColor: '#dc3545' }); 
+                }
+            }
+        });
+
+        function voltarParaOpcoes() { bootstrap.Modal.getInstance(document.getElementById('modalRelatorioUsuario')).hide(); new bootstrap.Modal(document.getElementById('modalOpcoesUsuario')).show(); }
+
+        // --- SISTEMA DE PONTO ---
+        function abrirFluxoRegistroPonto() {
+            bootstrap.Modal.getInstance(document.getElementById('modalOpcoesUsuario')).hide();
+            document.getElementById('lbl-turno-oficial').textContent = usuarioSelecionado.turno;
+            document.getElementById('time-entrada').textContent = usuarioSelecionado.pontoHoje.entrada; document.getElementById('time-intervalo').textContent = usuarioSelecionado.pontoHoje.intervalo;
+            document.getElementById('time-retorno').textContent = usuarioSelecionado.pontoHoje.retorno; document.getElementById('time-saida').textContent = usuarioSelecionado.pontoHoje.saida;
+
+            ['entrada', 'intervalo', 'retorno', 'saida'].forEach(etapa => {
+                const el = document.getElementById(`step-${etapa}`); el.classList.remove('completed', 'active');
+                if(usuarioSelecionado.pontoHoje[etapa] !== '--:--') el.classList.add('completed');
+            });
+            const proximo = ['entrada', 'intervalo', 'retorno', 'saida'].find(e => usuarioSelecionado.pontoHoje[e] === '--:--');
+            if(proximo) document.getElementById(`step-${proximo}`).classList.add('active');
+            new bootstrap.Modal(document.getElementById('modalRegistrarPonto')).show();
+        }
+
+        async function confirmarBatidaPonto() {
+            const prox = ['entrada', 'intervalo', 'retorno', 'saida'].find(e => usuarioSelecionado.pontoHoje[e] === '--:--');
+            if(!prox) { Swal.fire({ icon: 'info', title: 'Concluído', text: 'Todos os pontos batidos.', confirmButtonColor: '#212529' }); return; }
+
+            const agora = new Date(); const horaAtualStr = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+            const timestamps = Object.values(usuarioSelecionado.logsHojeTimestamps);
+            if(timestamps.length > 0) {
+                const diff = Math.floor((agora.getTime() - Math.max(...timestamps)) / 60000);
+                if(diff < 45) { Swal.fire({ icon: 'warning', title: 'Bloqueio', text: `Aguarde ${45 - diff} minutos.`, confirmButtonColor: '#ffc107' }); return; }
+            }
+
+            Swal.fire({ title: 'Registrar?', text: `Confirmar ${prox.toUpperCase()} às ${horaAtualStr}?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#198754' }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    const res = await fetchAPI({ acao: "registrarPonto", cpf: usuarioSelecionado.cpf, data: hojeStr, etapa: prox, hora: horaAtualStr });
+                    if (res.status !== 'sucesso') { Swal.fire('Erro', 'Falha ao salvar.', 'error'); return; }
+
+                    usuarioSelecionado.pontoHoje[prox] = horaAtualStr; 
+                    usuarioSelecionado.logsHojeTimestamps[prox] = agora.getTime();
+                    
+                    let regGeral = usuarioSelecionado.registrosGerais.find(r => r.data === hojeStr);
+                    if (!regGeral) { 
+                        regGeral = { data: hojeStr, entrada: "--:--", intervalo: "--:--", retorno: "--:--", saida: "--:--" }; 
+                        usuarioSelecionado.registrosGerais.push(regGeral); 
+                    }
+                    regGeral[prox] = horaAtualStr;
+
+                    let msg = '';
+                    if(prox === 'entrada') {
+                        const [th, tm] = usuarioSelecionado.turno.split(':').map(Number);
+                        const limite = new Date(agora); limite.setHours(th, tm + 5, 0, 0);
+                        let tHist = '', dHist = '';
+                        if(agora > limite) {
+                            const minAtr = Math.floor((agora.getTime() - (limite.getTime() - 5*60000)) / 60000);
+                            msg = `<br><span class="badge bg-danger mt-2">ATRASO: ${minAtr} min</span>`; tHist = 'Atraso'; dHist = `${horaAtualStr} (Atraso: ${minAtr}m)`;
+                        } else { msg = '<br><span class="badge bg-success mt-2">NO HORÁRIO</span>'; tHist = 'No Horário'; dHist = `${horaAtualStr} - Ok`; }
+                        await fetchAPI({ acao: "salvarHistorico", cpf: usuarioSelecionado.cpf, data: hojeStr, tipo: tHist, detalhe: dHist });
+                        usuarioSelecionado.historico.push({ data: hojeStr, tipo: tHist, detalhe: dHist });
+                    }
+
+                    Swal.fire({ title: 'Sucesso!', html: `Ponto às ${horaAtualStr}!${msg}`, icon: 'success' });
+                    bootstrap.Modal.getInstance(document.getElementById('modalRegistrarPonto')).hide(); 
+                    atualizarDashboardAdmin();
+                }
+            });
+        }
+
+        // --- RELATÓRIOS INDIVIDUAIS (VISÃO FUNCIONÁRIO) ---
+        function abrirRelatorioIndividual() {
+            bootstrap.Modal.getInstance(document.getElementById('modalOpcoesUsuario')).hide();
+            document.getElementById('rep-ind-nome').textContent = usuarioSelecionado.nome; document.getElementById('rep-ind-cpf').textContent = usuarioSelecionado.cpf;
+            filtrarRelatorioIndividual(); new bootstrap.Modal(document.getElementById('modalRelatorioUsuario')).show();
+        }
+
+        function filtrarRelatorioIndividual() {
+            const dIni = document.getElementById('rep-ind-data-ini').value; const dFim = document.getElementById('rep-ind-data-fim').value;
+            const tabs = ['#tbl-ind-faltas', '#tbl-ind-nohorario', '#tbl-ind-atrasos', '#tbl-ind-jornada', '#tbl-export-master'];
+            tabs.forEach(id => { if ($.fn.DataTable.isDataTable(id)) $(id).DataTable().clear().destroy(); });
+            $('#tbl-ind-faltas tbody, #tbl-ind-nohorario tbody, #tbl-ind-atrasos tbody, #tbl-ind-jornada tbody, #tbl-export-master tbody').empty();
+
+            let cFaltas = 0, cNoHorario = 0, cAtrasos = 0;
+
+            usuarioSelecionado.historico.forEach(h => {
+                if(h.data >= dIni && h.data <= dFim) {
+                    const df = h.data.split('-').reverse().join('/');
+                    if(h.tipo === 'Falta') {
+                        cFaltas++; $('#tbl-ind-faltas tbody').append(`<tr><td><b>${df}</b></td><td class="text-danger fw-bold">${usuarioSelecionado.turno}</td></tr>`);
+                        $('#tbl-export-master tbody').append(`<tr><td>Falta</td><td>${df}</td><td>Devido: ${usuarioSelecionado.turno}</td><td>Ausente</td></tr>`);
+                    } else if(h.tipo === 'No Horário') {
+                        cNoHorario++; $('#tbl-ind-nohorario tbody').append(`<tr><td><b>${df}</b></td><td>${h.detalhe.split(' ')[0]}</td><td><span class="badge bg-success">Pontual</span></td></tr>`);
+                        $('#tbl-export-master tbody').append(`<tr><td>Pontual</td><td>${df}</td><td>Batida: ${h.detalhe.split(' ')[0]}</td><td>No Horário</td></tr>`);
+                    } else if(h.tipo === 'Atraso') {
+                        cAtrasos++; $('#tbl-ind-atrasos tbody').append(`<tr><td><b>${df}</b></td><td class="text-danger">${h.detalhe.split(' ')[0]}</td><td><span class="badge bg-warning text-dark">${h.detalhe.match(/\d+/)[0]} min</span></td></tr>`);
+                        $('#tbl-export-master tbody').append(`<tr><td>Atraso</td><td>${df}</td><td>Efetivo: ${h.detalhe.split(' ')[0]}</td><td>Atraso: ${h.detalhe.match(/\d+/)[0]} min</td></tr>`);
+                    }
+                }
+            });
+
+            usuarioSelecionado.registrosGerais.forEach(p => {
+                if(p.data >= dIni && p.data <= dFim && p.entrada !== '--:--') {
+                    const df = p.data.split('-').reverse().join('/');
+                    $('#tbl-ind-jornada tbody').append(`<tr><td><b>${df}</b></td><td>${p.entrada}</td><td>${p.intervalo}</td><td>${p.retorno}</td><td>${p.saida}</td><td><span class="text-primary fw-bold">${p.data===hojeStr?'Hoje':'Concluída'}</span></td></tr>`);
+                    $('#tbl-export-master tbody').append(`<tr><td>Jornada</td><td>${df}</td><td>E: ${p.entrada} | I: ${p.intervalo} | R: ${p.retorno} | S: ${p.saida}</td><td>${p.data===hojeStr?'Em andamento':'Concluída'}</td></tr>`);
+                }
+            });
+
+            document.getElementById('card-ind-faltas').textContent = cFaltas; document.getElementById('card-ind-nohorario').textContent = cNoHorario;
+            document.getElementById('card-ind-atrasos').textContent = cAtrasos; document.getElementById('card-ind-total').textContent = cNoHorario + cAtrasos;
+
+            ['#tbl-ind-faltas', '#tbl-ind-nohorario', '#tbl-ind-atrasos', '#tbl-ind-jornada'].forEach(id => { 
+                $(id).DataTable({ 
+                    dom: 'rtp', 
+                    pageLength: 5,
+                    language: { 
+                        emptyTable: "Sem dados",
+                        paginate: { previous: "Ant", next: "Próx" }
+                    }, 
+                    ordering: false 
+                }); 
+            });
+            
+            const mt = $('#tbl-export-master').DataTable({
+                dom: 'Brt', ordering: false, buttons: [
+                    { extend: 'copy', className: 'btn-export btn-export-copy', text: '📋 Copiar' },
+                    { extend: 'excel', className: 'btn-export btn-export-excel', text: '📊 Excel' },
+                    { extend: 'pdf', className: 'btn-export btn-export-pdf', text: '📄 PDF' },
+                    { extend: 'print', className: 'btn-export btn-export-print', text: '🖨️ Imprimir', title: `Relatório - ${usuarioSelecionado.nome}` }
+                ]
+            });
+            $('#botoes-exportacao-global').empty().append( mt.buttons().container() );
+        }
+
+        // --- DASHBOARD ADMIN ---
+        function verificarSenhaAdmin() {
+            if (btoa(document.getElementById('senha-admin-input').value) === 'MTIzNA==') {
+                bootstrap.Modal.getInstance(document.getElementById('modalSenhaAdmin')).hide(); document.getElementById('senha-admin-input').value = ''; 
+                document.getElementById('tela-ponto').style.display = 'none'; document.getElementById('tela-dashboard').style.display = 'block'; atualizarDashboardAdmin();
+            } else { Swal.fire({ icon: 'error', title: 'Senha incorreta!' }); document.getElementById('senha-admin-input').value = ''; }
+        }
+        function voltarParaPonto() { document.getElementById('tela-dashboard').style.display = 'none'; document.getElementById('tela-ponto').style.display = 'flex'; document.getElementById('cpf-input').focus(); }
+        
+        function alternarAbas(aba) {
+            $('.nav-tab-item').removeClass('active'); $('#conteudo-dash, #conteudo-relatorios').hide();
+            if(aba === 'dash') { 
+                $('#tab-dash').addClass('active'); $('#conteudo-dash').show(); atualizarDashboardAdmin(); 
+            } else if (aba === 'relatorios') { 
+                $('#tab-relatorios').addClass('active'); $('#conteudo-relatorios').show(); carregarRelatorioAdmin(); 
+            }
+        }
+
+        // --- FUNÇÕES DE EDIÇÃO NO DASHBOARD ---
+        function abrirModalEditarColaborador(cpf) {
+            const colab = bancoColaboradores.find(c => c.cpf === cpf);
+            if(colab) {
+                document.getElementById('edit-colab-cpf-original').value = colab.cpf;
+                document.getElementById('edit-colab-cpf').value = colab.cpf;
+                document.getElementById('edit-colab-nome').value = colab.nome;
+                document.getElementById('edit-colab-data').value = colab.dataInicio;
+                document.getElementById('edit-colab-turno').value = colab.turno;
+                new bootstrap.Modal(document.getElementById('modalEditarColaborador')).show();
+            }
+        }
+
+        async function salvarEdicaoColaborador() {
+            const cpf = document.getElementById('edit-colab-cpf-original').value;
+            const nome = document.getElementById('edit-colab-nome').value;
+            const dataInicio = document.getElementById('edit-colab-data').value;
+            const turno = document.getElementById('edit-colab-turno').value;
+            
+            const colab = bancoColaboradores.find(c => c.cpf === cpf);
+            if(!colab) return;
+
+            Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            await fetchAPI({ acao: "editarColaborador", cpf: cpf, nome: nome, dataInicio: dataInicio, turno: turno });
+
+            colab.nome = nome;
+            colab.dataInicio = dataInicio;
+            colab.turno = turno;
+
+            Swal.fire('Sucesso!', 'Dados do colaborador atualizados.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarColaborador')).hide();
+            atualizarDashboardAdmin();
+        }
+
+        function abrirModalEditarPonto(cpf, dataPonto) {
+            const colab = bancoColaboradores.find(c => c.cpf === cpf);
+            if(!colab) return;
+            const registro = colab.registrosGerais.find(r => r.data === dataPonto);
+            if(!registro) return;
+
+            document.getElementById('edit-ponto-cpf').value = cpf;
+            document.getElementById('edit-ponto-data').value = dataPonto;
+
+            // Bloqueia inputs não preenchidos
+            const sets = ['entrada', 'intervalo', 'retorno', 'saida'];
+            sets.forEach(etapa => {
+                const inputElement = document.getElementById(`edit-ponto-${etapa}`);
+                if (registro[etapa] !== '--:--') {
+                    inputElement.disabled = false;
+                    inputElement.value = registro[etapa];
+                } else {
+                    inputElement.disabled = true;
+                    inputElement.value = '';
+                }
+            });
+
+            new bootstrap.Modal(document.getElementById('modalEditarPonto')).show();
+        }
+
+        async function salvarEdicaoPonto() {
+            const cpf = document.getElementById('edit-ponto-cpf').value;
+            const dataPonto = document.getElementById('edit-ponto-data').value;
+            
+            const colab = bancoColaboradores.find(c => c.cpf === cpf);
+            if(!colab) return;
+            let registro = colab.registrosGerais.find(r => r.data === dataPonto);
+            if(!registro) return;
+
+            const vEntrada = document.getElementById('edit-ponto-entrada').disabled ? registro.entrada : (document.getElementById('edit-ponto-entrada').value || '--:--');
+            const vIntervalo = document.getElementById('edit-ponto-intervalo').disabled ? registro.intervalo : (document.getElementById('edit-ponto-intervalo').value || '--:--');
+            const vRetorno = document.getElementById('edit-ponto-retorno').disabled ? registro.retorno : (document.getElementById('edit-ponto-retorno').value || '--:--');
+            const vSaida = document.getElementById('edit-ponto-saida').disabled ? registro.saida : (document.getElementById('edit-ponto-saida').value || '--:--');
+
+            Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            await fetchAPI({ acao: "editarPontoManual", cpf: cpf, data: dataPonto, entrada: vEntrada, intervalo: vIntervalo, retorno: vRetorno, saida: vSaida });
+            
+            registro.entrada = vEntrada; registro.intervalo = vIntervalo; registro.retorno = vRetorno; registro.saida = vSaida;
+
+            if (dataPonto === hojeStr) {
+                colab.pontoHoje.entrada = vEntrada; colab.pontoHoje.intervalo = vIntervalo;
+                colab.pontoHoje.retorno = vRetorno; colab.pontoHoje.saida = vSaida;
+            }
+
+            Swal.fire('Sucesso!', 'Os horários foram atualizados.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarPonto')).hide();
+            atualizarDashboardAdmin();
+        }
+
+        function atualizarDashboardAdmin() {
+            const dataAdmin = document.getElementById('data-filtro').value || hojeStr;
+            document.getElementById('lbl-tabela-data').textContent = dataAdmin.split('-').reverse().join('/');
+            
+            const cEscalados = document.getElementById('lista-escalados-conteudo');
+            const cTimeline = document.getElementById('lista-linha-tempo');
+            let hEsc = ''; let hTime = '';
+            let qEsc = 0; let qTrab = 0; let qInt = 0; let qAtr = 0; let qFal = 0;
+
+            bancoColaboradores.forEach(c => {
+                c.tempIsAtraso = false; c.tempIsEscalado = false;
+                
+                if (c.dataInicio === dataAdmin) {
+                    c.tempIsEscalado = true; qEsc++;
+                    let status = "Registrado"; let cor = "secondary";
+                    const rHoje = c.registrosGerais.find(x => x.data === dataAdmin);
+                    if (rHoje) {
+                        if (rHoje.saida !== '--:--') { status = "Concluído"; cor = "dark"; }
+                        else if (rHoje.retorno !== '--:--') { status = "Trabalhando"; cor = "green"; qTrab++; }
+                        else if (rHoje.intervalo !== '--:--') { status = "Intervalo"; cor = "dark"; qInt++; }
+                        else if (rHoje.entrada !== '--:--') { status = "Trabalhando"; cor = "green"; qTrab++; }
+                    }
+                    c.tempDashboardStatus = status; c.tempBadgeColor = cor;
+                    
+                    hEsc += `<div class="list-row">
+                        <div class="col-nome"><div class="nome">${c.nome}</div><div class="cpf">${c.cpf}</div></div>
+                        <div class="col-hora">${c.turno}</div>
+                        <div class="col-status d-flex justify-content-end align-items-center gap-2">
+                            <span class="badge-custom badge-${cor}">${status}</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="Editar" onclick="abrirModalEditarColaborador('${c.cpf}')">✏️</button>
+                        </div>
+                    </div>`;
+                }
+
+                const r = c.registrosGerais.find(x => x.data === dataAdmin);
+                let temAlgumaBatida = false;
+                if (r) {
+                    if (r.entrada !== '--:--' || r.intervalo !== '--:--' || r.retorno !== '--:--' || r.saida !== '--:--') {
+                        temAlgumaBatida = true;
+                    }
+                }
+
+                if (temAlgumaBatida) {
+                    hTime += `<tr>
+                        <td>
+                            <div class="col-nome-tabela">
+                                <span class="nome">${c.nome}</span>
+                                <span class="text-muted small d-block mt-1">${c.cpf}</span>
+                            </div>
+                        </td>
+                        <td class="time-cell ${r.entrada === '--:--' ? 'time-empty' : ''}">${r.entrada}</td>
+                        <td class="time-cell ${r.intervalo === '--:--' ? 'time-empty' : ''}">${r.intervalo}</td>
+                        <td class="time-cell ${r.retorno === '--:--' ? 'time-empty' : ''}">${r.retorno}</td>
+                        <td class="time-cell ${r.saida === '--:--' ? 'time-empty' : ''}">${r.saida}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold" onclick="abrirModalEditarPonto('${c.cpf}', '${dataAdmin}')">✏️ Editar</button>
+                        </td>
+                    </tr>`;
+                }
+
+                const hList = c.historico.filter(x => x.data === dataAdmin);
+                if (hList.some(h => h.tipo === 'Atraso')) { c.tempIsAtraso = true; qAtr++; }
+                if (hList.some(h => h.tipo === 'Falta')) { qFal++; }
+            });
+
+            if (hEsc === '') { cEscalados.innerHTML = '<div class="text-center p-4 text-muted small fw-bold">Nenhum colaborador com esta Data de Início exata.</div>'; } else { cEscalados.innerHTML = hEsc; }
+            if (hTime === '') { cTimeline.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-muted small fw-bold">Nenhum registro de ponto encontrado nesta data exata.</td></tr>'; } else { cTimeline.innerHTML = hTime; }
+            
+            document.getElementById('dash-card-escalados').textContent = qEsc;
+            document.getElementById('dash-card-trabalhando').textContent = qTrab;
+            document.getElementById('dash-card-intervalo').textContent = qInt;
+            document.getElementById('dash-card-atrasos').textContent = qAtr;
+            document.getElementById('dash-card-faltas').textContent = qFal;
+        }
+
+        function abrirModalDetalhesDash(categoria) {
+            const listaDiv = document.getElementById('detalhes-dash-lista'); listaDiv.innerHTML = '';
+            document.getElementById('detalhes-dash-titulo').textContent = `Colaboradores - ${categoria}`;
+            
+            let listaFiltrada = []; let totalDivisor = document.getElementById('dash-card-escalados').textContent;
+
+            bancoColaboradores.forEach(c => {
+                let add = false;
+                if (categoria === 'Escalados' && c.tempIsEscalado) add = true;
+                if (categoria === 'Trabalhando' && (c.tempDashboardStatus === 'Trabalhando' || c.tempDashboardStatus === 'Concluído')) add = true;
+                if (categoria === 'Intervalo' && c.tempDashboardStatus === 'Intervalo') add = true;
+                if (categoria === 'Faltas' && c.tempDashboardStatus === 'Falta') add = true;
+                if (categoria === 'Atrasos' && c.tempIsAtraso === true) add = true;
+
+                if (add) {
+                    listaFiltrada.push(c);
+                    listaDiv.innerHTML += `<div class="card-list-item"><div class="cli-info"><h6>${c.nome}</h6><p>${c.cpf}</p></div><span class="badge-custom badge-${c.tempBadgeColor}">${c.tempDashboardStatus}</span></div>`;
+                }
+            });
+
+            const qtd = listaFiltrada.length; const pct = totalDivisor > 0 ? Math.round((qtd / totalDivisor) * 100) : 0;
+            document.getElementById('detalhes-dash-contagem').textContent = `${qtd} DE ${totalDivisor}`;
+            document.getElementById('detalhes-dash-porcentagem').textContent = `${pct}%`; document.getElementById('detalhes-dash-barra').style.width = `${pct}%`;
+
+            if (qtd === 0) listaDiv.innerHTML = `<div class="text-center p-4 text-muted small fw-bold">Nenhum colaborador nesta categoria.</div>`;
+            new bootstrap.Modal(document.getElementById('modalDetalhesDash')).show();
+        }
+
+        // --- NOVO CARREGAMENTO DO RELATÓRIO ADMIN (FORMATO INDIVIDUALIZADO) ---
+        function carregarRelatorioAdmin() {
+            const dIni = document.getElementById('rep-admin-data-ini').value || hojeStr;
+            const dFim = document.getElementById('rep-admin-data-fim').value || hojeStr;
+            const filtroCpf = document.getElementById('rep-admin-colab').value; 
+
+            const tabs = ['#tbl-admin-faltas', '#tbl-admin-nohorario', '#tbl-admin-atrasos', '#tbl-admin-jornada', '#tbl-export-admin-master'];
+            tabs.forEach(id => { if ($.fn.DataTable.isDataTable(id)) $(id).DataTable().clear().destroy(); });
+            $('#tbl-admin-faltas tbody, #tbl-admin-nohorario tbody, #tbl-admin-atrasos tbody, #tbl-admin-jornada tbody, #tbl-export-admin-master tbody').empty();
+
+            let cFaltas = 0, cNoHorario = 0, cAtrasos = 0;
+
+            bancoColaboradores.forEach(c => {
+                if (filtroCpf && c.cpf !== filtroCpf) return; // Se escolheu alguém específico, filtra.
+
+                c.historico.forEach(h => {
+                    if(h.data >= dIni && h.data <= dFim) {
+                        const df = h.data.split('-').reverse().join('/');
+                        if(h.tipo === 'Falta') {
+                            cFaltas++; $('#tbl-admin-faltas tbody').append(`<tr><td><b>${c.nome}</b></td><td>${df}</td><td class="text-danger fw-bold">${c.turno}</td></tr>`);
+                            $('#tbl-export-admin-master tbody').append(`<tr><td>${c.nome}</td><td>Falta</td><td>${df}</td><td>Devido: ${c.turno}</td><td>Ausente</td></tr>`);
+                        } else if(h.tipo === 'No Horário') {
+                            cNoHorario++; $('#tbl-admin-nohorario tbody').append(`<tr><td><b>${c.nome}</b></td><td>${df}</td><td>${h.detalhe.split(' ')[0]}</td><td><span class="badge bg-success">Pontual</span></td></tr>`);
+                            $('#tbl-export-admin-master tbody').append(`<tr><td>${c.nome}</td><td>Pontual</td><td>${df}</td><td>Batida: ${h.detalhe.split(' ')[0]}</td><td>No Horário</td></tr>`);
+                        } else if(h.tipo === 'Atraso') {
+                            cAtrasos++; $('#tbl-admin-atrasos tbody').append(`<tr><td><b>${c.nome}</b></td><td>${df}</td><td class="text-danger">${h.detalhe.split(' ')[0]}</td><td><span class="badge bg-warning text-dark">${h.detalhe.match(/\d+/)[0]} min</span></td></tr>`);
+                            $('#tbl-export-admin-master tbody').append(`<tr><td>${c.nome}</td><td>Atraso</td><td>${df}</td><td>Efetivo: ${h.detalhe.split(' ')[0]}</td><td>Atraso: ${h.detalhe.match(/\d+/)[0]} min</td></tr>`);
+                        }
+                    }
+                });
+
+                c.registrosGerais.forEach(p => {
+                    if(p.data >= dIni && p.data <= dFim && p.entrada !== '--:--') {
+                        const df = p.data.split('-').reverse().join('/');
+                        $('#tbl-admin-jornada tbody').append(`<tr><td><b>${c.nome}</b></td><td>${df}</td><td>${p.entrada}</td><td>${p.intervalo}</td><td>${p.retorno}</td><td>${p.saida}</td><td><span class="text-primary fw-bold">${p.data===hojeStr?'Hoje':'Concluída'}</span></td></tr>`);
+                        $('#tbl-export-admin-master tbody').append(`<tr><td>${c.nome}</td><td>Jornada</td><td>${df}</td><td>E: ${p.entrada} | I: ${p.intervalo} | R: ${p.retorno} | S: ${p.saida}</td><td>${p.data===hojeStr?'Em andamento':'Concluída'}</td></tr>`);
+                    }
+                });
+            });
+
+            document.getElementById('card-admin-faltas').textContent = cFaltas; 
+            document.getElementById('card-admin-nohorario').textContent = cNoHorario;
+            document.getElementById('card-admin-atrasos').textContent = cAtrasos; 
+            document.getElementById('card-admin-total').textContent = cNoHorario + cAtrasos;
+
+            ['#tbl-admin-faltas', '#tbl-admin-nohorario', '#tbl-admin-atrasos', '#tbl-admin-jornada'].forEach(id => { 
+                $(id).DataTable({ 
+                    dom: 'rtp', 
+                    pageLength: 5,
+                    language: { 
+                        emptyTable: "Sem dados",
+                        paginate: { previous: "Ant", next: "Próx" }
+                    }, 
+                    ordering: false 
+                }); 
+            });
+            
+            let selElem = document.getElementById('rep-admin-colab');
+            let exportTitle = filtroCpf ? `Relatório - ${selElem.options[selElem.selectedIndex].text}` : `Relatório Geral Consolidado`;
+            
+            const mt = $('#tbl-export-admin-master').DataTable({
+                dom: 'Brt', ordering: false, buttons: [
+                    { extend: 'copy', className: 'btn-export btn-export-copy', text: '📋 Copiar' },
+                    { extend: 'excel', className: 'btn-export btn-export-excel', text: '📊 Excel' },
+                    { extend: 'pdf', className: 'btn-export btn-export-pdf', text: '📄 PDF' },
+                    { extend: 'print', className: 'btn-export btn-export-print', text: '🖨️ Imprimir', title: exportTitle }
+                ]
+            });
+            $('#botoes-exportacao-admin').empty().append( mt.buttons().container() );
+        }
+
+        async function adicionarNovoColaborador() {
+            const nome = document.getElementById('cad-nome').value; const cpf = document.getElementById('cad-cpf').value;
+            const turno = document.getElementById('hora-cadastro-input').value; const dataCadastro = document.getElementById('data-cadastro-input').value;
+            
+            if(!nome || !cpf) { Swal.fire('Campos Vazios', 'Preencha o Nome e o CPF.', 'warning'); return; }
+            Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const novoId = bancoColaboradores.length > 0 ? Math.max(...bancoColaboradores.map(c => c.id)) + 1 : 1;
+            const respostaGravar = await fetchAPI({ acao: "salvarColaborador", nome: nome, cpf: cpf, turno: turno, dataInicio: dataCadastro });
+
+            if (respostaGravar.status === "sucesso") {
+                bancoColaboradores.push({
+                    id: novoId, nome: nome, cpf: cpf, turno: turno, dataInicio: dataCadastro,
+                    pontoHoje: { entrada: "--:--", intervalo: "--:--", retorno: "--:--", saida: "--:--" },
+                    logsHojeTimestamps: {}, historico: [], registrosGerais: [], tempDashboardStatus: "", tempBadgeColor: "", tempIsAtraso: false, tempIsEscalado: false
+                });
+                document.getElementById('cad-nome').value = ''; document.getElementById('cad-cpf').value = '';
+                
+                // Adiciona o novo cara no Select do Relatório
+                const selAdminColab = document.getElementById('rep-admin-colab');
+                if(selAdminColab) {
+                    selAdminColab.innerHTML += `<option value="${cpf}">${nome}</option>`;
+                }
+
+                Swal.fire({ icon: 'success', title: 'Salvo!' }); atualizarDashboardAdmin();
+            } else { Swal.fire('Erro', 'Não foi possível salvar.', 'error'); }
+        }
+    </script>
+</body>
+</html>
