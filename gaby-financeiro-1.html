@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="light">
 <title>Gaby Store • Financeiro & Condicionais</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
@@ -72,21 +71,12 @@ body{
   letter-spacing:.04em;
 }
 
-.section-title{
-  font-family:'Playfair Display',serif;
-  font-weight:700;
-  color:var(--pink-deep);
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.section-title i{color:var(--gold-dark);}
-
 .card-app{
   background:var(--white);
   border:1px solid #ecd3e2;
   border-radius:18px;
   box-shadow:0 4px 16px rgba(156,20,88,.08);
+  margin-bottom:24px;
 }
 .card-app-header{
   background:var(--pink-light);
@@ -138,35 +128,19 @@ body{
 }
 .btn-nova-condicional:hover{background:var(--pink-light);}
 
-/* ===== ALERTA ===== */
-#alertaCard{display:none; margin-bottom:22px;}
-#alertaCard.show{display:block;}
-.alerta-header{
-  background:linear-gradient(135deg,#8c0f31,var(--danger-deep));
-  color:#fff; font-weight:700; padding:12px 20px;
-  border-radius:18px 18px 0 0;
-  display:flex; align-items:center; gap:10px;
-}
-.alerta-body{background:#fdf1f3; border:1.5px solid #f3c3cd; border-top:none; border-radius:0 0 18px 18px; padding:6px;}
-.alerta-item{
-  border-radius:12px; padding:10px 14px; margin:6px;
-  cursor:pointer; display:flex; justify-content:space-between; align-items:center;
-  flex-wrap:wrap; gap:6px; background:#fff; transition:.15s;
-  border:1px solid #f3c3cd;
-}
-.alerta-item:hover{background:#fde4e9; transform:translateX(2px);}
-.alerta-item .dias-badge{
-  font-weight:700; border-radius:20px; padding:3px 12px; font-size:.78rem; color:#fff;
-}
-.dias-vencido{background:var(--danger-deep);}
-.dias-hoje{background:#c9720f;}
-.dias-proximo{background:#c9a227;}
-
 /* ===== RESUMO ===== */
 .resumo-item{
   padding:14px 16px; border-radius:14px; margin-bottom:12px;
   border-left:4px solid var(--pink-deep);
   background:#fbf1f7;
+  transition:transform 0.15s, box-shadow 0.15s;
+}
+.resumo-item.clickable{
+  cursor:pointer;
+}
+.resumo-item.clickable:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(156,20,88,.15);
 }
 .resumo-item .lbl{font-size:.78rem; color:#8a6b7c; font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
 .resumo-item .val{font-size:1.3rem; font-weight:700; color:var(--pink-deep);}
@@ -177,9 +151,7 @@ body{
 .resumo-item.recebido{border-color:#1a7a3c; background:#effaf1;}
 .resumo-item.recebido .val{color:#1a7a3c;}
 
-/* ===== TABS E BUSCA ===== */
-.nav-pills .nav-link{color:var(--pink-deep); font-weight:600; border-radius:30px; padding:8px 20px;}
-.nav-pills .nav-link.active{background:var(--pink-deep); color:#fff;}
+/* ===== BUSCA ===== */
 .search-lg{
   border-radius:30px; padding:12px 20px 12px 46px;
   border:2px solid #e8d0e0; font-size:1rem;
@@ -204,6 +176,17 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
 .badge-proximo{background:#ffe4c4; color:#a1530a;}
 .badge-condicional-aberta{background:#e8f0fe; color:#174ea6;}
 .badge-condicional-fechada{background:#f3f3f3; color:#5f6368;}
+
+/* LISTAS MODAIS */
+.click-item-row{
+  cursor:pointer; transition:background 0.15s;
+  border-radius:10px; padding:10px 14px; margin-bottom:8px;
+  background:#fff; border:1px solid #f0dbe9;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.click-item-row:hover{
+  background:#fbeef5; border-color:var(--pink-mid);
+}
 
 /* ===== MODAIS ===== */
 .modal-content{border-radius:20px; overflow:hidden; border:2px solid var(--gold);}
@@ -234,8 +217,8 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
 .form-control:focus,.form-select:focus{border-color:var(--pink-deep); box-shadow:0 0 0 .2rem rgba(184,24,95,.15);}
 
 .gold-divider{height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); margin:18px 0;}
-.empty-state{text-align:center; padding:50px 20px; color:#a17b93;}
-.empty-state i{font-size:2.6rem; color:var(--pink-mid); opacity:.5;}
+.empty-state{text-align:center; padding:35px 20px; color:#a17b93;}
+.empty-state i{font-size:2.4rem; color:var(--pink-mid); opacity:.5;}
 .step-box{background:#fbf1f7; border:1px solid #f0dbe9; border-radius:14px; padding:16px;}
 
 @media (max-width: 767px){
@@ -261,7 +244,7 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
       </div>
       <div class="col-md-3 d-flex justify-content-md-end justify-content-center gap-2">
         <button class="btn btn-outline-gaby btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfig">
-          <i class="bi bi-gear"></i> PIX
+          <i class="bi bi-gear"></i> Config PIX
         </button>
       </div>
     </div>
@@ -269,28 +252,38 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
 </header>
 
 <div class="container">
-  <!-- ===== ALERTA ===== -->
-  <div id="alertaCard">
-    <div class="alerta-header">
-      <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-      <span>Alerta de vencimentos (até 10 dias)</span>
-    </div>
-    <div class="alerta-body" id="alertaLista"></div>
-  </div>
-
   <div class="row">
     <!-- ===== SIDEBAR ===== -->
     <div class="col-lg-3 mb-4">
-      <div class="resumo-item">
-        <div class="lbl">Total a receber</div>
+      <div class="resumo-item clickable" id="btnResumoTotalReceber" title="Clique para ver lista completa">
+        <div class="lbl d-flex justify-content-between">
+          <span>Total a receber</span>
+          <i class="bi bi-box-arrow-up-right"></i>
+        </div>
         <div class="val" id="resumoTotal">R$ 0,00</div>
       </div>
-      <div class="resumo-item vencidas">
-        <div class="lbl">Vencidas</div>
+
+      <div class="resumo-item proximas clickable" id="btnResumoProximos30" title="Clique para ver parcelas dos próximos 10 dias">
+        <div class="lbl d-flex justify-content-between">
+          <span>Próximos 30 dias</span>
+          <i class="bi bi-box-arrow-up-right"></i>
+        </div>
+        <div class="val" id="resumoProximos30">R$ 0,00</div>
+      </div>
+
+      <div class="resumo-item vencidas clickable" id="btnResumoVencidas" title="Clique para ver parcelas vencidas">
+        <div class="lbl d-flex justify-content-between">
+          <span>Vencidas</span>
+          <i class="bi bi-box-arrow-up-right"></i>
+        </div>
         <div class="val" id="resumoVencidas">R$ 0,00</div>
       </div>
-      <div class="resumo-item recebido">
-        <div class="lbl">Já recebido</div>
+      
+      <div class="resumo-item recebido clickable" id="btnResumoRecebido" title="Clique para ver valores já recebidos">
+        <div class="lbl d-flex justify-content-between">
+          <span>Já recebido</span>
+          <i class="bi bi-box-arrow-up-right"></i>
+        </div>
         <div class="val" id="resumoRecebido">R$ 0,00</div>
       </div>
 
@@ -302,88 +295,152 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
       </button>
     </div>
 
-    <!-- ===== ÁREA PRINCIPAL (TABS) ===== -->
+    <!-- ===== ÁREA PRINCIPAL ===== -->
     <div class="col-lg-9 mb-4">
+      
+      <div class="search-wrap mb-4">
+        <i class="bi bi-search"></i>
+        <input type="text" id="buscaGeral" class="form-control search-lg" placeholder="Pesquisar por cliente...">
+      </div>
+
+      <!-- TABELA 1: VENDAS E PARCELAS -->
       <div class="card-app overflow-hidden">
-        
-        <div class="p-3 bg-white" style="border-bottom:1px solid #ecd3e2;">
-          <ul class="nav nav-pills" id="pills-tab" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="tab-vendas-btn" data-bs-toggle="pill" data-bs-target="#tab-vendas" type="button">Vendas e Parcelas</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="tab-condicionais-btn" data-bs-toggle="pill" data-bs-target="#tab-condicionais" type="button">Condicionais (Sacolas)</button>
-            </li>
-          </ul>
+        <div class="card-app-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span><i class="bi bi-receipt-cutoff me-2"></i> Vendas e Parcelas</span>
+          <select id="filtroStatusVendas" class="form-select form-select-sm" style="max-width:190px">
+            <option value="todos">Todos os status</option>
+            <option value="pendente">Em aberto</option>
+            <option value="vencido">Vencidas</option>
+            <option value="pago">Quitadas</option>
+          </select>
         </div>
-
-        <div class="p-3 pb-0">
-          <div class="search-wrap">
-            <i class="bi bi-search"></i>
-            <input type="text" id="buscaGeral" class="form-control search-lg" placeholder="Pesquisar por cliente...">
-          </div>
+        <div class="table-responsive">
+          <table class="table table-gaby align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Data</th>
+                <th>Valor Total</th>
+                <th>Parcelas</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyVendas"></tbody>
+          </table>
         </div>
-
-        <div class="tab-content mt-3" id="pills-tabContent">
-          <!-- TAB VENDAS -->
-          <div class="tab-pane fade show active" id="tab-vendas" role="tabpanel">
-            <div class="card-app-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <span><i class="bi bi-receipt-cutoff"></i> Histórico de Vendas</span>
-              <select id="filtroStatusVendas" class="form-select form-select-sm" style="max-width:190px">
-                <option value="todos">Todos os status</option>
-                <option value="pendente">Em aberto</option>
-                <option value="vencido">Vencidas</option>
-                <option value="pago">Quitadas</option>
-              </select>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-gaby align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Data</th>
-                    <th>Valor</th>
-                    <th>Parcelas</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyVendas"></tbody>
-              </table>
-            </div>
-            <div id="emptyVendas" class="empty-state" style="display:none">
-              <i class="bi bi-inbox"></i><p class="mt-2 mb-0">Nenhuma venda cadastrada.</p>
-            </div>
-          </div>
-
-          <!-- TAB CONDICIONAIS -->
-          <div class="tab-pane fade" id="tab-condicionais" role="tabpanel">
-            <div class="card-app-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:var(--pink-light)">
-              <span><i class="bi bi-bag-heart"></i> Sacolas enviadas</span>
-              <select id="filtroStatusCondicionais" class="form-select form-select-sm" style="max-width:190px">
-                <option value="aberto">Em aberto</option>
-                <option value="concluido">Concluídas / Fechadas</option>
-                <option value="todos">Todas</option>
-              </select>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-gaby align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Data Saída</th>
-                    <th>Qtd Peças</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyCondicionais"></tbody>
-              </table>
-            </div>
-            <div id="emptyCondicionais" class="empty-state" style="display:none">
-              <i class="bi bi-bag-x"></i><p class="mt-2 mb-0">Nenhuma condicional no momento.</p>
-            </div>
-          </div>
+        <div id="emptyVendas" class="empty-state" style="display:none">
+          <i class="bi bi-inbox"></i><p class="mt-2 mb-0">Nenhuma venda encontrada.</p>
         </div>
+      </div>
 
+      <!-- TABELA 2: CONDICIONAIS -->
+      <div class="card-app overflow-hidden">
+        <div class="card-app-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:var(--pink-light)">
+          <span><i class="bi bi-bag-heart me-2"></i> Condicionais (Sacolas)</span>
+          <select id="filtroStatusCondicionais" class="form-select form-select-sm" style="max-width:190px">
+            <option value="aberto">Em aberto</option>
+            <option value="concluido">Concluídas / Fechadas</option>
+            <option value="todos">Todas</option>
+          </select>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-gaby align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Data Saída</th>
+                <th>Qtd Peças</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCondicionais"></tbody>
+          </table>
+        </div>
+        <div id="emptyCondicionais" class="empty-state" style="display:none">
+          <i class="bi bi-bag-x"></i><p class="mt-2 mb-0">Nenhuma condicional no momento.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL TOTAL A RECEBER ===== -->
+<div class="modal fade" id="modalTotalReceber" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-wallet2"></i> Todas as Contas a Receber (Em Aberto)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="alert alert-secondary py-2 small mb-3">
+          Clique sobre qualquer cliente/parcela para abrir o detalhe da venda.
+        </div>
+        <div id="listaTotalReceberBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-gaby" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PRÓXIMOS 10 DIAS ===== -->
+<div class="modal fade" id="modalProximos10Dias" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-calendar-event"></i> Parcelas dos Próximos 10 Dias</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="alert alert-warning py-2 small mb-3">
+          Mostrando vencimentos de hoje até os próximos 10 dias. Clique para abrir a venda.
+        </div>
+        <div id="listaProximos10DiasBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-gaby" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VENCIDAS ===== -->
+<div class="modal fade" id="modalVencidas" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Parcelas Vencidas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="alert alert-danger py-2 small mb-3">
+          Clique em qualquer conta vencida para ver os detalhes da venda e registrar pagamento.
+        </div>
+        <div id="listaVencidasBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-gaby" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL JÁ RECEBIDO ===== -->
+<div class="modal fade" id="modalJáRecebido" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-success"><i class="bi bi-check-circle-fill me-2"></i> Histórico de Recebimentos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div id="listaRecebidosBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-gaby" data-bs-dismiss="modal">Fechar</button>
       </div>
     </div>
   </div>
@@ -445,7 +502,7 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
   </div>
 </div>
 
-<!-- ===== MODAL CONFERÊNCIA (FECHAR CONDICIONAL) ===== -->
+<!-- ===== MODAL CONFERÊNCIA ===== -->
 <div class="modal fade" id="modalConferencia" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -498,7 +555,7 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
       <div class="modal-body">
         <form id="formVenda" onsubmit="return false;">
           <input type="hidden" id="fVendaId">
-          <input type="hidden" id="fOrigemCondicionalId"> <!-- Referência se veio de uma condicional -->
+          <input type="hidden" id="fOrigemCondicionalId">
 
           <div class="row g-3 mb-3">
             <div class="col-md-7">
@@ -558,6 +615,7 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
                 <div class="col-md-4">
                   <label class="form-label">1º vencimento</label>
                   <input type="date" class="form-control" id="fPrimeiroVencimento">
+                  <small class="text-muted" style="font-size:0.72rem">Apenas dias úteis (30 a 40 dias pós-compra)</small>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Intervalo (dias)</label>
@@ -631,19 +689,20 @@ table.table-gaby tbody tr:hover{background:#fbeef5;}
       <div class="modal-body">
         <div class="mb-3">
           <label class="form-label">Chave PIX</label>
-          <input type="text" class="form-control" id="cfgChave">
+          <input type="text" class="form-control" id="cfgChave" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória">
+          <small class="text-muted" style="font-size:0.75rem">Digite a chave cadastrada no seu banco.</small>
         </div>
         <div class="mb-3">
           <label class="form-label">Nome do recebedor</label>
-          <input type="text" class="form-control" id="cfgNome" maxlength="25">
+          <input type="text" class="form-control" id="cfgNome" maxlength="25" placeholder="Ex: GABY STORE">
         </div>
         <div class="mb-3">
           <label class="form-label">Cidade</label>
-          <input type="text" class="form-control" id="cfgCidade" maxlength="15">
+          <input type="text" class="form-control" id="cfgCidade" maxlength="15" placeholder="Ex: SAO PAULO">
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-gaby" id="btnSalvarConfig">Salvar</button>
+        <button class="btn btn-gaby" id="btnSalvarConfig">Salvar Configurações</button>
       </div>
     </div>
   </div>
@@ -670,10 +729,118 @@ function hojeISO(){ return new Date().toISOString().slice(0,10); }
 function addDias(iso, dias){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+Number(dias)); return d.toISOString().slice(0,10); }
 function diffDias(iso){ const hj=new Date(hojeISO()+'T00:00:00'); const al=new Date(iso+'T00:00:00'); return Math.round((al-hj)/86400000); }
 
-/* ========================= SISTEMA DE CONDICIONAIS ========================= */
-let tempItensCondicional = []; // Guarda os itens enquanto o form está aberto
+/* SE O DIA FOR SÁBADO OU DOMINGO, AVANÇA PARA A SEGUNDA-FEIRA */
+function proximoDiaUtil(iso){
+  let d = new Date(iso + 'T00:00:00');
+  while(d.getDay() === 0 || d.getDay() === 6){ // 0 = Domingo, 6 = Sábado
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().slice(0, 10);
+}
 
-// Abre Modal Nova Condicional limpo
+/* ========================= GERADOR PIX (PADRÃO BANCO CENTRAL EMV) ========================= */
+function sanitizeText(str){
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .toUpperCase()
+    .trim();
+}
+
+function limparChavePix(chave) {
+  if (!chave) return '';
+  let ch = chave.trim();
+  
+  if (ch.includes('@')) {
+    return ch.toLowerCase().replace(/\s+/g, '');
+  }
+  
+  const numeros = ch.replace(/\D/g, '');
+  if (numeros.length === 11 || numeros.length === 14) return numeros;
+  if (numeros.length === 10 || numeros.length === 11) return '+55' + numeros;
+  if (numeros.length === 12 || numeros.length === 13) return '+' + numeros;
+  
+  return ch;
+}
+
+function emvFormat(id, value){
+  const len = String(value.length).padStart(2, '0');
+  return id + len + value;
+}
+
+function calcCRC16(payload){
+  let crc = 0xFFFF;
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= (payload.charCodeAt(i) << 8);
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+      } else {
+        crc = (crc << 1) & 0xFFFF;
+      }
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function montarPayloadPix({chave, valor, nome, cidade, txid}){
+  const ch = limparChavePix(chave);
+  const nm = sanitizeText(nome || 'GABY STORE').slice(0, 25) || 'GABY STORE';
+  const cd = sanitizeText(cidade || 'BRASIL').slice(0, 15) || 'BRASIL';
+  const tx = sanitizeText(txid || '***').replace(/\s+/g, '').slice(0, 25) || '***';
+  const val = Number(valor).toFixed(2);
+
+  const merchantAccount = emvFormat('00', 'br.gov.bcb.pix') + emvFormat('01', ch);
+  const additionalData = emvFormat('05', tx);
+
+  let payload = 
+    emvFormat('00', '01') +
+    emvFormat('01', '12') +
+    emvFormat('26', merchantAccount) +
+    emvFormat('52', '0000') +
+    emvFormat('53', '986') +
+    emvFormat('54', val) +
+    emvFormat('58', 'BR') +
+    emvFormat('59', nm) +
+    emvFormat('60', cd) +
+    emvFormat('62', additionalData) +
+    '6304';
+
+  return payload + calcCRC16(payload);
+}
+
+function abrirPix(vid, pnum){
+  const c = getConfig(); 
+  if(!c.chave) { 
+    alert('Configure a Chave PIX primeiro nas configurações!'); 
+    return bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfig')).show(); 
+  }
+  
+  const v = getVendas().find(x => x.id === vid);
+  const p = v.parcelas.find(x => x.numero === pnum);
+  
+  const payload = montarPayloadPix({
+    chave: c.chave, 
+    valor: p.valor, 
+    nome: c.nome, 
+    cidade: c.cidade, 
+    txid: 'GBY' + vid.slice(-5) + pnum
+  });
+
+  document.getElementById('pixInfo').innerHTML = `<b>${v.cliente}</b><br>Parcela ${p.numero} • <b>${fmtMoeda(p.valor)}</b>`;
+  document.getElementById('pixCodigo').textContent = payload;
+  
+  const qrContainer = document.getElementById('pixQr');
+  qrContainer.innerHTML = ''; 
+  new QRCode(qrContainer, { text: payload, width: 190, height: 190 });
+  
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPix')).show();
+}
+
+/* ========================= SISTEMA DE CONDICIONAIS ========================= */
+let tempItensCondicional = [];
+
 document.getElementById('btnAbrirNovaCondicional').addEventListener('click', ()=>{
   document.getElementById('cCliente').value = '';
   document.getElementById('cTelefone').value = '';
@@ -686,7 +853,6 @@ document.getElementById('btnAbrirNovaCondicional').addEventListener('click', ()=
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovaCondicional')).show();
 });
 
-// Adiciona e agrupa itens na condicional
 document.getElementById('btnCAdicionarItem').addEventListener('click', ()=>{
   const desc = document.getElementById('cItemDesc').value.trim();
   const qtd = parseInt(document.getElementById('cItemQtd').value) || 1;
@@ -694,7 +860,6 @@ document.getElementById('btnCAdicionarItem').addEventListener('click', ()=>{
 
   if(!desc || valor <= 0) { alert('Informe a descrição e o valor unitário da peça.'); return; }
 
-  // Lógica de agrupar se a roupa for igual
   const existente = tempItensCondicional.find(i => i.desc.toLowerCase() === desc.toLowerCase() && i.valor === valor);
   if(existente){
     existente.qtd += qtd;
@@ -722,7 +887,6 @@ function renderTabelaCItens(){
 }
 function removerItemCond(id){ tempItensCondicional = tempItensCondicional.filter(i=>i.id!==id); renderTabelaCItens(); }
 
-// Salvar a condicional no LocalStorage
 document.getElementById('btnSalvarCondicional').addEventListener('click', ()=>{
   const cliente = document.getElementById('cCliente').value.trim();
   const telefone = document.getElementById('cTelefone').value.trim();
@@ -738,7 +902,6 @@ document.getElementById('btnSalvarCondicional').addEventListener('click', ()=>{
   renderTabelas();
 });
 
-// Renderizar aba Condicionais
 function renderTabCondicionais(){
   const conds = getCondicionais();
   const busca = document.getElementById('buscaGeral').value.trim().toLowerCase();
@@ -768,7 +931,6 @@ function renderTabCondicionais(){
   });
 }
 
-// Conferência / Fechamento de Condicional
 let condAtualId = null;
 function abrirConferencia(id){
   const c = getCondicionais().find(x=>x.id===id);
@@ -816,7 +978,6 @@ document.getElementById('btnExcluirCondicional').addEventListener('click', ()=>{
   renderTabelas();
 });
 
-// Gerar Venda a partir da Conferência
 document.getElementById('btnGerarVendaConf').addEventListener('click', ()=>{
   const c = getCondicionais().find(x=>x.id===condAtualId);
   const itensParaVenda = [];
@@ -826,7 +987,6 @@ document.getElementById('btnGerarVendaConf').addEventListener('click', ()=>{
     if(qtdFicou > 0){
       const idx = inp.getAttribute('data-idx');
       const itemOrig = c.itens[idx];
-      // Adiciona ao carrinho de venda: multiplicando qtd pelo valor se ficou mais de 1
       itensParaVenda.push({ desc: `${itemOrig.desc} (${qtdFicou}x)`, valor: itemOrig.valor * qtdFicou });
     }
   });
@@ -838,7 +998,6 @@ document.getElementById('btnGerarVendaConf').addEventListener('click', ()=>{
 
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConferencia')).hide();
   
-  // Abre o formulário de venda preenchido
   resetFormVenda();
   document.getElementById('fOrigemCondicionalId').value = c.id;
   document.getElementById('fCliente').value = c.cliente;
@@ -851,7 +1010,7 @@ document.getElementById('btnGerarVendaConf').addEventListener('click', ()=>{
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNovaVenda')).show();
 });
 
-/* ========================= SISTEMA DE VENDAS (Existente) ========================= */
+/* ========================= SISTEMA DE VENDAS ========================= */
 function vendaStatusGeral(v){
   const abertas = v.parcelas.filter(p=>p.status!=='pago');
   if(abertas.length===0) return 'pago';
@@ -892,13 +1051,20 @@ function renderTabVendas(){
     tbody.appendChild(tr);
   });
 
-  // Atualiza painel resumo lateral
-  let tot=0, venc=0, rec=0;
+  let tot=0, venc=0, rec=0, prox30=0;
   vendas.forEach(v=>v.parcelas.forEach(p=>{
-    if(p.status==='pago') rec += Number(p.valor);
-    else { tot += Number(p.valor); if(diffDias(p.vencimento)<0) venc += Number(p.valor); }
+    if(p.status==='pago') {
+      rec += Number(p.valor);
+    } else { 
+      const diff = diffDias(p.vencimento);
+      tot += Number(p.valor); 
+      if(diff < 0) venc += Number(p.valor); 
+      if(diff >= 0 && diff <= 30) prox30 += Number(p.valor);
+    }
   }));
+
   document.getElementById('resumoTotal').textContent = fmtMoeda(tot);
+  document.getElementById('resumoProximos30').textContent = fmtMoeda(prox30);
   document.getElementById('resumoVencidas').textContent = fmtMoeda(venc);
   document.getElementById('resumoRecebido').textContent = fmtMoeda(rec);
 }
@@ -907,7 +1073,172 @@ document.getElementById('buscaGeral').addEventListener('input', renderTabelas);
 document.getElementById('filtroStatusVendas').addEventListener('change', renderTabVendas);
 document.getElementById('filtroStatusCondicionais').addEventListener('change', renderTabCondicionais);
 
-/* Logica interna modal de Vendas */
+/* MODAL TOTAL A RECEBER */
+document.getElementById('btnResumoTotalReceber').addEventListener('click', ()=>{
+  const vendas = getVendas();
+  const container = document.getElementById('listaTotalReceberBody');
+  container.innerHTML = '';
+
+  let cont = 0;
+  vendas.forEach(v => {
+    const pendentes = v.parcelas.filter(p => p.status !== 'pago');
+    if(pendentes.length > 0){
+      pendentes.forEach(p => {
+        cont++;
+        const d = diffDias(p.vencimento);
+        const tagStatus = d < 0 ? `<span class="badge bg-danger">Vencida (${Math.abs(d)}d)</span>` : `<span class="badge bg-warning text-dark">Vence em ${d}d</span>`;
+        
+        const div = document.createElement('div');
+        div.className = 'click-item-row';
+        div.innerHTML = `
+          <div>
+            <div class="fw-bold"><i class="bi bi-person me-1"></i>${v.cliente}</div>
+            <small class="text-muted">Parcela ${p.numero}/${v.parcelas.length} • Vencimento: ${fmtData(p.vencimento)} ${tagStatus}</small>
+          </div>
+          <div class="text-end fw-bold text-danger">
+            ${fmtMoeda(p.valor)}
+          </div>
+        `;
+        div.addEventListener('click', ()=>{
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTotalReceber')).hide();
+          abrirDetalheVenda(v.id);
+        });
+        container.appendChild(div);
+      });
+    }
+  });
+
+  if(cont === 0){
+    container.innerHTML = '<div class="text-center text-muted py-4">Nenhuma conta pendente a receber!</div>';
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTotalReceber')).show();
+});
+
+/* MODAL PRÓXIMOS 10 DIAS */
+document.getElementById('btnResumoProximos30').addEventListener('click', ()=>{
+  const vendas = getVendas();
+  const container = document.getElementById('listaProximos10DiasBody');
+  container.innerHTML = '';
+
+  let listaParcelas = [];
+
+  vendas.forEach(v => {
+    v.parcelas.forEach(p => {
+      if(p.status !== 'pago'){
+        const diff = diffDias(p.vencimento);
+        if(diff >= 0 && diff <= 10){
+          listaParcelas.push({ vendaId: v.id, cliente: v.cliente, parcela: p, diff });
+        }
+      }
+    });
+  });
+
+  listaParcelas.sort((a,b) => a.diff - b.diff);
+
+  if(listaParcelas.length === 0){
+    container.innerHTML = '<div class="text-center text-muted py-4">Nenhuma parcela a vencer nos próximos 10 dias.</div>';
+  } else {
+    listaParcelas.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'click-item-row';
+      div.innerHTML = `
+        <div>
+          <div class="fw-bold"><i class="bi bi-person-fill me-1" style="color:var(--pink-deep)"></i>${item.cliente}</div>
+          <small class="text-muted">Parc. ${item.parcela.numero} • Vence ${item.diff === 0 ? '<b>HOJE</b>' : 'em ' + item.diff + ' dia(s)'} (${fmtData(item.parcela.vencimento)})</small>
+        </div>
+        <div class="text-end fw-bold" style="color:var(--pink-deep)">
+          ${fmtMoeda(item.parcela.valor)}
+        </div>
+      `;
+      div.addEventListener('click', ()=>{
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProximos10Dias')).hide();
+        abrirDetalheVenda(item.vendaId);
+      });
+      container.appendChild(div);
+    });
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProximos10Dias')).show();
+});
+
+/* MODAL VENCIDAS (COM QUANTIDADE DE DIAS EM ATRASO) */
+document.getElementById('btnResumoVencidas').addEventListener('click', ()=>{
+  const vendas = getVendas();
+  const container = document.getElementById('listaVencidasBody');
+  container.innerHTML = '';
+
+  let count = 0;
+  vendas.forEach(v => {
+    v.parcelas.forEach(p => {
+      if(p.status !== 'pago'){
+        const diff = diffDias(p.vencimento);
+        if(diff < 0){
+          count++;
+          const atraso = Math.abs(diff);
+          const div = document.createElement('div');
+          div.className = 'click-item-row';
+          div.innerHTML = `
+            <div>
+              <div class="fw-bold"><i class="bi bi-person me-1"></i>${v.cliente}</div>
+              <small class="text-muted">Parcela ${p.numero}/${v.parcelas.length} • Venceu em: ${fmtData(p.vencimento)}</small>
+            </div>
+            <div class="text-end">
+              <div class="fw-bold text-danger">${fmtMoeda(p.valor)}</div>
+              <span class="badge bg-danger">${atraso} dia(s) em atraso</span>
+            </div>
+          `;
+          div.addEventListener('click', ()=>{
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVencidas')).hide();
+            abrirDetalheVenda(v.id);
+          });
+          container.appendChild(div);
+        }
+      }
+    });
+  });
+
+  if(count === 0){
+    container.innerHTML = '<div class="text-center text-muted py-4">Nenhuma parcela vencida no momento!</div>';
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVencidas')).show();
+});
+
+/* MODAL JÁ RECEBIDO (MOSTRA NOME DA CLIENTE, DIA E VALOR) */
+document.getElementById('btnResumoRecebido').addEventListener('click', ()=>{
+  const vendas = getVendas();
+  const container = document.getElementById('listaRecebidosBody');
+  container.innerHTML = '';
+
+  let count = 0;
+  vendas.forEach(v => {
+    v.parcelas.forEach(p => {
+      if(p.status === 'pago'){
+        count++;
+        const div = document.createElement('div');
+        div.className = 'click-item-row';
+        div.innerHTML = `
+          <div>
+            <div class="fw-bold"><i class="bi bi-person-check me-1 text-success"></i>${v.cliente}</div>
+            <small class="text-muted">Pago em: <b>${fmtData(p.pagoEm || v.dataVenda)}</b> • Parcela ${p.numero}/${v.parcelas.length}</small>
+          </div>
+          <div class="text-end fw-bold text-success">
+            ${fmtMoeda(p.valor)}
+          </div>
+        `;
+        container.appendChild(div);
+      }
+    });
+  });
+
+  if(count === 0){
+    container.innerHTML = '<div class="text-center text-muted py-4">Nenhum pagamento registrado ainda.</div>';
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalJáRecebido')).show();
+});
+
 function novaLinhaItem(desc='', valor=''){
   const r = document.createElement('div');
   r.className='item-row d-flex gap-2 align-items-center';
@@ -928,11 +1259,43 @@ function atualizarTotalVenda(){
   let t=0; document.querySelectorAll('.item-valor').forEach(e=>{ t+=parseFloat(e.value)||0; });
   document.getElementById('totalVendaDisplay').textContent = fmtMoeda(t); return t;
 }
+
+/* REGRA DE VENCIMENTO DAS VENDAS */
+function atualizarRegrasVencimento(){
+  const dtVenda = document.getElementById('fDataVenda').value || hojeISO();
+  
+  // 30 dias após a compra, pulando sábado e domingo
+  let dtMin = proximoDiaUtil(addDias(dtVenda, 30));
+  // Mais 10 dias após para escolha no calendário
+  let dtMax = addDias(dtMin, 10);
+
+  const inputVenc = document.getElementById('fPrimeiroVencimento');
+  inputVenc.min = dtMin;
+  inputVenc.max = dtMax;
+  
+  if(!inputVenc.value || inputVenc.value < dtMin || inputVenc.value > dtMax){
+    inputVenc.value = dtMin;
+  }
+}
+
+document.getElementById('fDataVenda').addEventListener('change', atualizarRegrasVencimento);
+
+document.getElementById('fPrimeiroVencimento').addEventListener('change', (e)=>{
+  if(e.target.value){
+    let ajustada = proximoDiaUtil(e.target.value);
+    if(ajustada !== e.target.value){
+      alert('Vencimentos não podem ser aos sábados ou domingos. Ajustado automaticamente para a próxima segunda-feira.');
+      e.target.value = ajustada;
+    }
+  }
+});
+
 document.getElementById('fForma').addEventListener('change', (e)=>{
   const p = e.target.value==='parcelado';
   document.getElementById('blocoEntradaCheck').style.display = p?'flex':'none';
   document.getElementById('blocoParcelamento').style.display = p?'block':'none';
   if(!p) { document.getElementById('fTemEntrada').checked=false; document.getElementById('blocoEntradaValor').style.display='none'; }
+  else { atualizarRegrasVencimento(); }
 });
 document.getElementById('fTemEntrada').addEventListener('change', (e)=> document.getElementById('blocoEntradaValor').style.display = e.target.checked?'flex':'none' );
 
@@ -942,13 +1305,19 @@ document.getElementById('btnGerarParcelas').addEventListener('click', ()=>{
   const valEnt = temEnt? (parseFloat(document.getElementById('fEntradaValor').value)||0) : 0;
   const rest = Math.max(tot - valEnt, 0);
   const n = Math.max(parseInt(document.getElementById('fNumParcelas').value)||1, 1);
-  const prim = document.getElementById('fPrimeiroVencimento').value || addDias(hojeISO(),30);
+  
+  atualizarRegrasVencimento();
+  const prim = document.getElementById('fPrimeiroVencimento').value;
   const inter = parseInt(document.getElementById('fIntervalo').value)||30;
   
   const c = document.getElementById('listaParcelasForm'); c.innerHTML='';
   if(temEnt) c.innerHTML += `<div class="d-flex gap-2 mb-2"><span class="badge badge-pendente" style="min-width:76px">Entrada</span><input type="date" class="form-control form-control-sm parcela-data" value="${hojeISO()}" style="max-width:170px"><input type="number" step="0.01" class="form-control form-control-sm parcela-valor" value="${valEnt.toFixed(2)}" style="max-width:130px"><input type="hidden" class="parcela-tipo" value="entrada"></div>`;
+  
   for(let i=0;i<n;i++){
-    c.innerHTML += `<div class="d-flex gap-2 mb-2"><span class="badge badge-pendente" style="min-width:76px">Parc. ${i+1}</span><input type="date" class="form-control form-control-sm parcela-data" value="${i===0?prim:addDias(prim,inter*i)}" style="max-width:170px"><input type="number" step="0.01" class="form-control form-control-sm parcela-valor" value="${(rest/n).toFixed(2)}" style="max-width:130px"><input type="hidden" class="parcela-tipo" value="parcela"></div>`;
+    let dtCalc = i===0 ? prim : addDias(prim, inter*i);
+    dtCalc = proximoDiaUtil(dtCalc); // Garante que parcelas seguintes também não caiam no fim de semana
+    
+    c.innerHTML += `<div class="d-flex gap-2 mb-2"><span class="badge badge-pendente" style="min-width:76px">Parc. ${i+1}</span><input type="date" class="form-control form-control-sm parcela-data" value="${dtCalc}" style="max-width:170px"><input type="number" step="0.01" class="form-control form-control-sm parcela-valor" value="${(rest/n).toFixed(2)}" style="max-width:130px"><input type="hidden" class="parcela-tipo" value="parcela"></div>`;
   }
 });
 
@@ -965,7 +1334,7 @@ function resetFormVenda(){
   document.getElementById('listaParcelasForm').innerHTML='';
   document.getElementById('fNumParcelas').value = 2;
   document.getElementById('fIntervalo').value = 30;
-  document.getElementById('fPrimeiroVencimento').value = addDias(hojeISO(),30);
+  atualizarRegrasVencimento();
 }
 
 document.getElementById('btnAbrirNovaVenda').addEventListener('click', ()=>{
@@ -1005,7 +1374,6 @@ document.getElementById('btnSalvarVenda').addEventListener('click', ()=>{
     if(idx>-1) vendas[idx] = {...vendas[idx], cliente, telefone:tel, dataVenda:dt, itens, valorTotal:valTotal, forma, parcelas:parc.map(p=>{ const a=vendas[idx].parcelas.find(x=>x.numero===p.numero); return (a&&a.status==='pago')?{...p,status:'pago',pagoEm:a.pagoEm}:p; })};
   } else {
     vendas.push({ id:uid(), cliente, telefone:tel, dataVenda:dt, itens, valorTotal:valTotal, forma, parcelas:parc });
-    // Se veio de condicional, marca como concluída
     if(idCondicionalOrigem){
       const conds = getCondicionais();
       const c = conds.find(x=>x.id===idCondicionalOrigem);
@@ -1028,7 +1396,7 @@ function abrirDetalheVenda(id){
   
   const hParc = v.parcelas.map(p=>{
     const d=diffDias(p.vencimento); const isP = p.status==='pago';
-    const stLabel = isP? `Pago em ${fmtData(p.pagoEm)}`:(d<0?`Vencida há ${Math.abs(d)}d`:d===0?'Vence hoje':`Faltam ${d}d`);
+    const stLabel = isP? `Pago em ${fmtData(p.pagoEm)}`:(d<0?`<span class="text-danger fw-bold">Vencida há ${Math.abs(d)} dia(s) em atraso</span>`:d===0?'Vence hoje':`Faltam ${d}d`);
     const cls = isP?'pago':(d<0?'vencido':(d<=10?'proximo':''));
     return `<div class="parcela-row ${cls}">
       <div><b>${p.tipo==='entrada'?'<span class="tag-entrada">Entrada</span>':''}Parc. ${p.numero} - ${fmtMoeda(p.valor)}</b><br><small>Venc: ${fmtData(p.vencimento)} | ${stLabel}</small></div>
@@ -1047,34 +1415,23 @@ function mudarPago(id, num, isPago){
   p.status = isPago?'pago':'pendente'; if(isPago) p.pagoEm=hojeISO(); else delete p.pagoEm;
   saveVendas(vs); abrirDetalheVenda(id); renderTabelas();
 }
+
 document.getElementById('btnExcluirVenda').addEventListener('click', ()=>{
   if(!confirm('Excluir venda inteira?')) return;
   saveVendas(getVendas().filter(v=>v.id!==vendaAtualId));
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDetalhe')).hide(); renderTabelas();
 });
 
-/* PIX */
-function montarPayloadPix({chave, valor, nome, cidade, txid}){
-  const emv=(id,v)=>id+String(v.length).padStart(2,'0')+v;
-  let p = emv('00','01')+emv('26',emv('00','br.gov.bcb.pix')+emv('01',chave))+emv('52','0000')+emv('53','986')+emv('54',Number(valor).toFixed(2))+emv('58','BR')+emv('59',(nome||'GABY').slice(0,25))+emv('60',(cidade||'BR').slice(0,15))+emv('62',emv('05',(txid||'***').slice(0,25)))+'6304';
-  let crc=0xFFFF; for(let i=0;i<p.length;i++){ crc^=(p.charCodeAt(i)<<8); for(let j=0;j<8;j++){ crc=(crc&0x8000)?((crc<<1)^0x1021):crc<<1; } }
-  return p+(crc&0xFFFF).toString(16).toUpperCase().padStart(4,'0');
-}
-function abrirPix(vid, pnum){
-  const c=getConfig(); if(!c.chave) { alert('Configure o PIX primeiro!'); return bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfig')).show(); }
-  const p=getVendas().find(v=>v.id===vid).parcelas.find(x=>x.numero===pnum);
-  const pay=montarPayloadPix({chave:c.chave, valor:p.valor, nome:c.nome, cidade:c.cidade, txid:'GBY'+vid+pnum});
-  document.getElementById('pixCodigo').textContent = pay;
-  document.getElementById('pixQr').innerHTML=''; new QRCode(document.getElementById('pixQr'), {text:pay, width:200, height:200});
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPix')).show();
-}
 document.getElementById('btnSalvarConfig').addEventListener('click',()=>{
   saveConfig({chave:document.getElementById('cfgChave').value, nome:document.getElementById('cfgNome').value, cidade:document.getElementById('cfgCidade').value});
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfig')).hide();
+  alert('Configurações salvas!');
 });
+
 document.getElementById('modalConfig').addEventListener('show.bs.modal', ()=>{
   const c=getConfig(); document.getElementById('cfgChave').value=c.chave||''; document.getElementById('cfgNome').value=c.nome||''; document.getElementById('cfgCidade').value=c.cidade||'';
 });
+
 document.getElementById('btnCopiarPix').addEventListener('click',e=>{
   navigator.clipboard.writeText(document.getElementById('pixCodigo').textContent);
   e.target.innerHTML='Copiado!'; setTimeout(()=>e.target.innerHTML='Copiar código',1500);
