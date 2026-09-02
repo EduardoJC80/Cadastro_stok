@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e72b76">
+<title>Checkout — Gaby Store</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<style>
+:root{
+  --pink:#e72b76; --pink-2:#f45b96; --pink-soft:#fff1f7;
+  --ink:#202126; --muted:#74747c; --line:#ece7eb; --bg:#f5f5f7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif}
+.btn-pink{background:var(--pink);color:#fff;border:0;font-weight:800;border-radius:14px;padding:.9rem 1.25rem}
+.btn-pink:hover{background:#cc1e65;color:#fff}
+.btn-outline-soft{background:#fff;color:var(--ink);border:1.5px solid #e5e0e4;font-weight:700;border-radius:14px;padding:.75rem 1rem}
+.btn-outline-soft:hover{background:#fafafa;color:var(--ink)}
+.card-box{background:#fff;border:1px solid #ebe6ea;border-radius:20px;padding:1.25rem 1.35rem;box-shadow:0 2px 12px rgba(30,20,30,.04)}
+.section-title{font-weight:800;font-size:.95rem;margin-bottom:1rem;display:flex;align-items:center;gap:.55rem;color:var(--ink)}
+.section-title i{color:var(--pink);font-size:1.05rem}
+.form-control{border-radius:12px;border:1px solid #ebe6ea;padding:.72rem .95rem;font-size:.9rem;background:#faf9fa}
+.form-control:focus{border-color:var(--pink-2);box-shadow:0 0 0 .2rem rgba(244,91,150,.12);background:#fff}
+.form-label{font-size:.78rem;font-weight:700;color:#555;margin-bottom:.35rem}
+.client-chip{background:#fff;border:1px solid #ebe6ea;border-radius:18px;padding:.9rem 1.15rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;box-shadow:0 2px 10px rgba(30,20,30,.03)}
+.client-chip .avatar{width:44px;height:44px;border-radius:50%;background:var(--pink);color:#fff;display:grid;place-items:center;font-weight:800;font-size:1.15rem;flex-shrink:0}
+.pay-option,.ship-opt{border:1.5px solid #ebe6ea;border-radius:16px;padding:1rem 1.1rem;cursor:pointer;transition:.2s;background:#fff}
+.pay-option:hover,.ship-opt:hover{border-color:#f0c8da}
+.pay-option.active,.ship-opt.active{border-color:var(--pink);background:var(--pink-soft)}
+.badge-tag{font-size:.68rem;font-weight:800;padding:.22rem .55rem;border-radius:999px}
+.summary-line{display:flex;justify-content:space-between;margin-bottom:.4rem;font-size:.9rem}
+.summary-total{font-size:1.25rem;font-weight:800;color:var(--pink);border-top:1px solid #f0e8ec;padding-top:.85rem;margin-top:.55rem}
+.item-row{display:flex;gap:.85rem;padding:.6rem 0;border-bottom:1px solid #f0e8ec}
+.item-row:last-child{border-bottom:0}
+.item-row img{width:56px;height:56px;object-fit:cover;border-radius:12px;background:#f6f6f6}
+.pay-screen{position:fixed;inset:0;z-index:1050;background:rgba(18,16,22,.5);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:1rem}
+.pay-screen.show{display:flex}
+.pay-panel{background:#fff;border-radius:24px;width:100%;max-width:480px;max-height:94vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .28s ease}
+@keyframes slideUp{from{transform:translateY(30px);opacity:.5}to{transform:translateY(0);opacity:1}}
+.pay-panel-header{background:#1a1a22;color:#fff;padding:1.2rem 1.4rem 1.3rem;border-radius:24px 24px 0 0;position:relative}
+.pay-panel-header .close-btn{position:absolute;right:1rem;top:1rem;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;display:grid;place-items:center;cursor:pointer}
+.pay-panel-body{padding:1.25rem 1.4rem 1.5rem}
+.card-visual{background:linear-gradient(135deg,#4a1f7a,#c43b7a);border-radius:18px;padding:1.3rem 1.45rem;color:#fff;margin-bottom:1.25rem;min-height:150px;position:relative;overflow:hidden}
+.card-visual.debito{background:linear-gradient(135deg,#2a2d7a,#7b3fa8)}
+.card-visual .card-brand{font-size:.72rem;font-weight:700;letter-spacing:.08em;opacity:.9}
+.card-visual .card-dots{font-size:1.15rem;letter-spacing:.2em;margin:1.2rem 0 1rem}
+.card-visual .card-footer{display:flex;justify-content:space-between;font-size:.78rem;opacity:.95}
+.qr-box{border:2px dashed #f0c8da;border-radius:18px;padding:1.3rem;text-align:center;margin:1rem 0;background:#fffafc}
+.qr-placeholder{width:190px;height:190px;margin:0 auto .8rem;background:#111;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:.78rem}
+.pix-code-box{background:#f7f7f9;border:1px solid #ebe6ea;border-radius:12px;padding:.7rem 1rem;font-family:ui-monospace,monospace;font-size:.76rem;word-break:break-all;display:flex;align-items:center;gap:.7rem}
+.boleto-code{background:#f7f7f9;border:1px solid #ebe6ea;border-radius:12px;padding:.7rem 1rem;font-family:ui-monospace,monospace;font-size:.8rem;letter-spacing:.03em}
+.alert-soft{background:#fff8e8;border:1px solid #f0e0b8;border-radius:14px;padding:.9rem 1.05rem;font-size:.82rem;color:#8a6a20}
+@media(max-width:991.98px){.summary-sticky{position:static!important}}
+</style>
+</head>
+<body>
+  <div class="container py-3 py-md-4" style="max-width:1080px">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <a href="GabyStore_LOCALSTORAGE.html" class="text-decoration-none text-dark fw-bold" style="font-family:'Playfair Display',serif;font-size:1.15rem">
+        <span style="color:var(--pink)">Gaby</span> Store
+      </a>
+      <a href="GabyStore_LOCALSTORAGE.html" class="btn btn-sm btn-outline-soft"><i class="bi bi-arrow-left me-1"></i>Voltar à loja</a>
+    </div>
+
+    <div id="emptyCart" class="card-box text-center py-5 d-none">
+      <i class="bi bi-bag-x fs-1 text-secondary d-block mb-2"></i>
+      <p class="text-secondary mb-3">Seu carrinho está vazio.</p>
+      <a href="GabyStore_LOCALSTORAGE.html" class="btn-pink">Continuar comprando</a>
+    </div>
+
+    <div id="checkoutWrap" class="row g-3 g-lg-4">
+      <div class="col-lg-7">
+        <div class="client-chip" id="clientChip">
+          <div class="d-flex align-items-center gap-3">
+            <div class="avatar" id="clientAvatar">G</div>
+            <div>
+              <div class="small text-secondary" style="font-size:.65rem;font-weight:800;letter-spacing:.05em">CLIENTE CONECTADO</div>
+              <div class="fw-bold" id="clientName">gabystore</div>
+              <div class="text-secondary small" id="clientEmail">gabystore@gabystore.com</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none p-0" onclick="window.location.href='GabyStore_LOCALSTORAGE.html'">
+            <i class="bi bi-arrow-left-right me-1"></i>Trocar conta
+          </button>
+        </div>
+
+        <div class="card-box mb-3">
+          <div class="section-title"><i class="bi bi-person"></i> 1. Dados do Destinatário</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nome Completo *</label>
+              <input type="text" class="form-control" id="ckNome" placeholder="Nome completo" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">WhatsApp / Telefone *</label>
+              <input type="tel" class="form-control" id="ckTelefone" placeholder="(11) 99999-9999">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">E-mail para Rastreio *</label>
+              <input type="email" class="form-control" id="ckEmail" placeholder="seu@email.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">CPF (Opcional p/ Nota)</label>
+              <input type="text" class="form-control" id="ckCpf" placeholder="000.000.000-00">
+            </div>
+          </div>
+        </div>
+
+        <div class="card-box mb-3">
+          <div class="section-title"><i class="bi bi-geo-alt"></i> 2. Cadastrar Endereço de Entrega</div>
+          <div class="row g-3">
+            <div class="col-6 col-md-4">
+              <label class="form-label">CEP *</label>
+              <input type="text" class="form-control" id="ckCep" placeholder="00000-000" onblur="onCepBlur()">
+            </div>
+            <div class="col-6 col-md-8">
+              <label class="form-label">Rua / Logradouro *</label>
+              <input type="text" class="form-control" id="ckRua" placeholder="Rua Irmãos Gressler">
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label">Número *</label>
+              <input type="text" class="form-control" id="ckNumero" placeholder="7">
+            </div>
+            <div class="col-6 col-md-8">
+              <label class="form-label">Complemento (Apto, Bloco, etc.)</label>
+              <input type="text" class="form-control" id="ckComplemento" placeholder="Ex: Apto 42, Bloco B">
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label">Bairro *</label>
+              <input type="text" class="form-control" id="ckBairro" placeholder="Centro">
+            </div>
+            <div class="col-6 col-md-5">
+              <label class="form-label">Cidade *</label>
+              <input type="text" class="form-control" id="ckCidade" placeholder="Ijuí">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">UF *</label>
+              <input type="text" class="form-control" id="ckUf" placeholder="RS" maxlength="2">
+            </div>
+          </div>
+        </div>
+
+        <div class="card-box mb-3">
+          <div class="section-title"><i class="bi bi-truck"></i> 3. Forma de Entrega</div>
+          <div id="shipOptions" class="d-flex flex-column flex-sm-row gap-2">
+            <div class="text-secondary small">Informe o CEP para calcular o frete.</div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="section-title mb-0"><i class="bi bi-credit-card"></i> 4. Escolha o Método de Pagamento</div>
+            <span class="badge rounded-pill" style="background:var(--pink-soft);color:var(--pink);font-size:.68rem;font-weight:800">Abre direto ao confirmar</span>
+          </div>
+          <div class="row g-2" id="payOptionsGrid">
+            <div class="col-6">
+              <div class="pay-option h-100" data-pay="Cartão de Crédito" onclick="selectPay(this)">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <strong class="small"><i class="bi bi-credit-card-2-front me-1"></i>Cartão de Crédito</strong>
+                  <span class="badge-tag" style="background:#fce8f1;color:var(--pink)">Até 6x</span>
+                </div>
+                <div class="small text-secondary" style="font-size:.72rem;line-height:1.35">Em até 6x via Mercado Pago, com aprovação rápida e segura.</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="pay-option h-100" data-pay="Cartão de Débito" onclick="selectPay(this)">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <strong class="small"><i class="bi bi-credit-card me-1"></i>Cartão de Débito</strong>
+                  <span class="badge-tag" style="background:#eef2ff;color:#3b5bdb">À vista</span>
+                </div>
+                <div class="small text-secondary" style="font-size:.72rem;line-height:1.35">Débito processado via Mercado Pago, direto na sua conta.</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="pay-option h-100" data-pay="Pix" onclick="selectPay(this)">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <strong class="small"><i class="bi bi-qr-code me-1"></i>Pix Instantâneo</strong>
+                  <span class="badge-tag" style="background:#e6f7ed;color:#1a7a45">Imediato</span>
+                </div>
+                <div class="small text-secondary" style="font-size:.72rem;line-height:1.35">Pix real via Mercado Pago — QR Code e Copia e Cola.</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="pay-option h-100 active" data-pay="Boleto" onclick="selectPay(this)">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <strong class="small"><i class="bi bi-upc me-1"></i>Boleto Bancário</strong>
+                  <span class="badge-tag" style="background:#fff3e0;color:#c47a12">3 dias</span>
+                </div>
+                <div class="small text-secondary" style="font-size:.72rem;line-height:1.35">Boleto real via Mercado Pago — internet banking ou lotérica.</div>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card-box summary-sticky sticky-top" style="top:1rem">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-bag-check" style="color:var(--pink)"></i>
+            <h6 class="fw-bold mb-0">Resumo do Pedido</h6>
+          </div>
+          <div id="orderItems"></div>
+          <div class="mt-3">
+            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
+              <span class="badge rounded-pill d-inline-flex align-items-center gap-1" style="background:#fce8f1;color:var(--pink);font-size:.72rem;font-weight:800;padding:.4rem .75rem" id="payBadge">
+                <i class="bi bi-upc"></i> FORMA ESCOLHIDA · Boleto Bancário
+              </span>
+              <span class="badge rounded-pill" style="background:#fff3e0;color:#c47a12;font-size:.68rem;font-weight:800" id="payDays">3 dias úteis</span>
+            </div>
+            <div class="summary-line"><span class="text-secondary">Subtotal (<span id="sumQty">0</span> itens)</span><strong id="sumSubtotal">R$ 0,00</strong></div>
+            <div class="summary-line"><span class="text-secondary">Frete (<span id="sumShipMethod">PAC</span>)</span><strong id="sumFrete">—</strong></div>
+            <div class="summary-line d-none" id="sumCouponLine"><span class="text-secondary">Cupom (<span id="sumCouponCode">—</span>)</span><strong class="text-success" id="sumCouponDiscount">—</strong></div>
+            <div class="mt-2 mb-2">
+              <label class="small fw-bold text-secondary">Cupom de desconto</label>
+              <div class="d-flex gap-2">
+                <input type="text" class="form-control form-control-sm" id="couponInput" placeholder="Ex: GABY-AB12" style="text-transform:uppercase">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="applyCoupon()">Aplicar</button>
+              </div>
+              <div class="small mt-1" id="couponMsg"></div>
+            </div>
+            <div class="summary-line summary-total"><span>Total Final</span><span id="sumTotal">R$ 0,00</span></div>
+          </div>
+          <button type="button" class="btn-pink w-100 mt-3" id="btnConfirm" onclick="openPaymentScreen()">
+            <i class="bi bi-receipt me-1"></i>Confirmar Pagamento (<span id="btnTotal">R$ 0,00</span>)
+          </button>
+          <p class="small text-secondary text-center mt-2 mb-0" id="payHint">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Abrirá direto a tela de Boleto Bancário.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIX -->
+  <div class="pay-screen" id="screenPix">
+    <div class="pay-panel">
+      <div class="pay-panel-header">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-shield-check" style="color:#f45b96"></i>
+          <span class="small" style="letter-spacing:.04em;font-weight:700;font-size:.72rem">PAGAMENTO 100% SEGURO</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2">
+          <i class="bi bi-qr-code fs-4"></i>
+          <h5 class="mb-0 fw-bold">Pix Instantâneo</h5>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-3">
+          <span class="small opacity-75">Valor Total a Pagar:</span>
+          <strong class="fs-4" style="color:#f45b96" id="pixTotal">R$ 0,00</strong>
+        </div>
+        <button type="button" class="close-btn" onclick="closePayScreens()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="pay-panel-body">
+        <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded-3" style="background:#fff1f7">
+          <span class="small fw-bold" style="color:var(--pink)"><i class="bi bi-clock me-1"></i>Validade do QR Code:</span>
+          <strong id="pixTimer" style="color:var(--pink)">14:57</strong>
+        </div>
+        <div id="pixMpStatus" class="small text-secondary mb-2">Gerando Pix pelo Mercado Pago…</div>
+        <div class="qr-box">
+          <div class="qr-placeholder" id="pixQrWrap">
+            <div class="text-center px-2" id="pixQrFallback">
+              <i class="bi bi-qr-code fs-1 d-block mb-2"></i>
+              Aponte a câmera<br>no app do seu banco
+            </div>
+            <img id="pixQrImg" alt="QR Code Pix" class="d-none" style="max-width:220px;width:100%;height:auto;margin:0 auto;display:block">
+          </div>
+        </div>
+        <label class="form-label">Código Pix Copia e Cola:</label>
+        <div class="pix-code-box mb-3">
+          <span class="flex-grow-1" id="pixCode">Aguardando geração…</span>
+          <button type="button" class="btn btn-sm btn-pink text-nowrap" onclick="copyPix()"><i class="bi bi-clipboard me-1"></i>Copiar Pix</button>
+        </div>
+        <div class="rounded-3 p-3" style="background:#f7f7f9">
+          <div class="fw-bold small mb-2">Passo a passo para pagar:</div>
+          <ol class="small text-secondary mb-0 ps-3" style="line-height:1.55">
+            <li>Abra o app do seu banco ou carteira digital.</li>
+            <li>Selecione a opção Pix &gt; Ler QR Code ou Pagar Pix Copia e Cola.</li>
+            <li>Conclua o pagamento e clique no botão abaixo para finalizar.</li>
+          </ol>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+          <button type="button" class="btn btn-outline-soft flex-fill" onclick="closePayScreens()">Voltar / Trocar Método</button>
+          <button type="button" class="btn-pink flex-fill" onclick="finalizeOrder('Pix')"><i class="bi bi-lock-fill me-1"></i>Pagar e Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOLETO -->
+  <div class="pay-screen" id="screenBoleto">
+    <div class="pay-panel">
+      <div class="pay-panel-header">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-shield-check" style="color:#f45b96"></i>
+          <span class="small" style="letter-spacing:.04em;font-weight:700;font-size:.72rem">PAGAMENTO 100% SEGURO</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2">
+          <i class="bi bi-upc fs-4"></i>
+          <h5 class="mb-0 fw-bold">Boleto Bancário</h5>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-3">
+          <span class="small opacity-75">Valor Total a Pagar:</span>
+          <strong class="fs-4" style="color:#f45b96" id="boletoTotal">R$ 0,00</strong>
+        </div>
+        <button type="button" class="close-btn" onclick="closePayScreens()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="pay-panel-body">
+        <div id="boletoMpStatus" class="small text-secondary mb-2">Gerando boleto pelo Mercado Pago…</div>
+        <div class="d-flex justify-content-between mb-3">
+          <div>
+            <div class="fw-bold">Gaby Store</div>
+            <div class="small text-secondary">Boleto Bancário</div>
+          </div>
+          <div class="text-end">
+            <div class="small text-secondary">Vencimento</div>
+            <div class="fw-bold" id="boletoVenc">02/09/2026</div>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="small text-secondary">Pagador:</div>
+            <div class="fw-bold" id="boletoPagador">gabystore</div>
+          </div>
+          <div class="col-6 text-end">
+            <div class="small text-secondary">Valor Total:</div>
+            <div class="fw-bold" style="color:var(--pink)" id="boletoValor">R$ 0,00</div>
+          </div>
+        </div>
+        <label class="form-label">Código de Barras / Linha Digitável:</label>
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+          <div class="boleto-code flex-grow-1" id="boletoCode">34191.79001 01043.510047 45871.4602 8 95800000</div>
+          <button type="button" class="btn btn-dark rounded-3" onclick="copyBoleto()"><i class="bi bi-clipboard me-1"></i>Copiar Código</button>
+        </div>
+        <button type="button" class="btn w-100 mb-3" style="border:1.5px solid var(--pink);color:var(--pink);border-radius:14px;font-weight:700;background:#fff" onclick="Swal.fire({icon:'info',title:'Boleto PDF',text:'Em produção: download do PDF do boleto.',confirmButtonColor:'#e72b76'})">
+          <i class="bi bi-download me-1"></i>Baixar Boleto / Imprimir (PDF)
+        </button>
+        <div class="alert-soft">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          A confirmação do boleto bancário pode levar até 2 dias úteis após o pagamento. O envio das peças é iniciado logo após a compensação.
+        </div>
+        <div class="d-flex gap-2 mt-4">
+          <button type="button" class="btn btn-outline-soft flex-fill" onclick="closePayScreens()">Voltar / Trocar Método</button>
+          <button type="button" class="btn-pink flex-fill" onclick="finalizeOrder('Boleto')"><i class="bi bi-lock-fill me-1"></i>Pagar e Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRÉDITO -->
+  <div class="pay-screen" id="screenCredito">
+    <div class="pay-panel">
+      <div class="pay-panel-header">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-shield-check" style="color:#f45b96"></i>
+          <span class="small" style="letter-spacing:.04em;font-weight:700;font-size:.72rem">PAGAMENTO 100% SEGURO</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2">
+          <i class="bi bi-credit-card-2-front fs-4"></i>
+          <h5 class="mb-0 fw-bold">Cartão de Crédito</h5>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-3">
+          <span class="small opacity-75">Valor Total a Pagar:</span>
+          <strong class="fs-4" style="color:#f45b96" id="credTotal">R$ 0,00</strong>
+        </div>
+        <button type="button" class="close-btn" onclick="closePayScreens()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="pay-panel-body">
+        <div class="card-visual">
+          <div class="card-brand">CARTÃO DE CRÉDITO</div>
+          <div class="card-dots">•••• •••• •••• ••••</div>
+          <div class="card-footer">
+            <div><div style="font-size:.62rem;opacity:.7">TITULAR</div><div id="credTitularPreview">GABYSTORE</div></div>
+            <div class="text-end"><div style="font-size:.62rem;opacity:.7">VALIDADE</div><div>MM/AA</div></div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Número do Cartão *</label>
+            <input type="text" class="form-control" id="credNumero" placeholder="0000 0000 0000 0000" maxlength="19">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Nome Impresso no Cartão *</label>
+            <input type="text" class="form-control" id="credNome" placeholder="GABYSTORE" oninput="document.getElementById('credTitularPreview').textContent=(this.value||'GABYSTORE').toUpperCase()">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Validade (MM/AA) *</label>
+            <input type="text" class="form-control" id="credValidade" placeholder="MM/AA" maxlength="5">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Código de Segurança (CVV) *</label>
+            <input type="text" class="form-control" id="credCvv" placeholder="123" maxlength="4">
+          </div>
+          <div class="col-12">
+            <label class="form-label">CPF do Titular do Cartão</label>
+            <input type="text" class="form-control" id="credCpf" placeholder="000.000.000-00">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Selecione as Parcelas com Valores *</label>
+            <select class="form-control" id="credParcelas" style="appearance:auto">
+              <option value="1">1x de R$ 0,00 (à vista)</option>
+            </select>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+          <button type="button" class="btn btn-outline-soft flex-fill" onclick="closePayScreens()">Voltar / Trocar Método</button>
+          <button type="button" class="btn-pink flex-fill" onclick="finalizeOrder('Cartão de Crédito')"><i class="bi bi-lock-fill me-1"></i>Pagar e Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DÉBITO -->
+  <div class="pay-screen" id="screenDebito">
+    <div class="pay-panel">
+      <div class="pay-panel-header">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <i class="bi bi-shield-check" style="color:#f45b96"></i>
+          <span class="small" style="letter-spacing:.04em;font-weight:700;font-size:.72rem">PAGAMENTO 100% SEGURO</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2">
+          <i class="bi bi-credit-card fs-4"></i>
+          <h5 class="mb-0 fw-bold">Cartão de Débito</h5>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-3">
+          <span class="small opacity-75">Valor Total a Pagar:</span>
+          <strong class="fs-4" style="color:#f45b96" id="debTotal">R$ 0,00</strong>
+        </div>
+        <button type="button" class="close-btn" onclick="closePayScreens()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="pay-panel-body">
+        <div class="card-visual debito">
+          <div class="card-brand">CARTÃO DE DÉBITO</div>
+          <div class="card-dots">•••• •••• •••• ••••</div>
+          <div class="card-footer">
+            <div><div style="font-size:.62rem;opacity:.7">TITULAR</div><div id="debTitularPreview">GABYSTORE</div></div>
+            <div class="text-end"><div style="font-size:.62rem;opacity:.7">VALIDADE</div><div>MM/AA</div></div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Número do Cartão *</label>
+            <input type="text" class="form-control" id="debNumero" placeholder="0000 0000 0000 0000" maxlength="19">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Nome Impresso no Cartão *</label>
+            <input type="text" class="form-control" id="debNome" placeholder="GABYSTORE" oninput="document.getElementById('debTitularPreview').textContent=(this.value||'GABYSTORE').toUpperCase()">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Validade (MM/AA) *</label>
+            <input type="text" class="form-control" id="debValidade" placeholder="MM/AA" maxlength="5">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Código de Segurança (CVV) *</label>
+            <input type="text" class="form-control" id="debCvv" placeholder="123" maxlength="4">
+          </div>
+          <div class="col-12">
+            <label class="form-label">CPF do Titular do Cartão</label>
+            <input type="text" class="form-control" id="debCpf" placeholder="000.000.000-00">
+          </div>
+        </div>
+        <div class="alert border-0 mt-3 mb-0" style="background:#e8f8ef;border-radius:14px;color:#1a7a45">
+          <i class="bi bi-shield-check me-1"></i>
+          O valor total de <strong id="debHintTotal">R$ 0,00</strong> será debitado à vista da sua conta bancária após a confirmação.
+        </div>
+        <div class="d-flex gap-2 mt-4">
+          <button type="button" class="btn btn-outline-soft flex-fill" onclick="closePayScreens()">Voltar / Trocar Método</button>
+          <button type="button" class="btn-pink flex-fill" onclick="finalizeOrder('Cartão de Débito')"><i class="bi bi-lock-fill me-1"></i>Pagar e Finalizar Compra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<script>
+const REMOTE_DB_DISABLED = ''; // banco local removido
+let cart = [], shipping = { method: 'PAC', price: 0, days: '' }, paymentMethod = 'Boleto', cep = '';
+
+function money(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
+function formatCep(s){ const d=onlyDigits(s).slice(0,8); return d.length>5?d.slice(0,5)+'-'+d.slice(5):d; }
+function validCep(s){ return onlyDigits(s).length===8; }
+function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+function cepDistanceBand(cepVal){
+  const n=parseInt(onlyDigits(cepVal).slice(0,2)||'0',10);
+  if(n<=19) return {pac:19.90,sedex:29.90,pacDays:'5–9 dias úteis',sedexDays:'2–4 dias úteis'};
+  if(n<=29) return {pac:24.90,sedex:34.90,pacDays:'6–10 dias úteis',sedexDays:'3–5 dias úteis'};
+  if(n<=49) return {pac:27.90,sedex:39.90,pacDays:'6–11 dias úteis',sedexDays:'3–6 dias úteis'};
+  if(n<=59) return {pac:31.90,sedex:46.90,pacDays:'7–12 dias úteis',sedexDays:'4–7 dias úteis'};
+  if(n<=69) return {pac:34.90,sedex:52.90,pacDays:'8–13 dias úteis',sedexDays:'4–8 dias úteis'};
+  if(n<=79) return {pac:36.90,sedex:55.90,pacDays:'8–14 dias úteis',sedexDays:'4–8 dias úteis'};
+  return {pac:39.90,sedex:59.90,pacDays:'9–15 dias úteis',sedexDays:'4–8 dias úteis'};
+}
+function shippingQuote(cepVal, total){
+  if(!validCep(cepVal)) return null;
+  const base=cepDistanceBand(cepVal);
+  const weight=Math.max(0, cart.reduce((s,i)=>s+(Number(i.qty)||1),0)-1)*2.5;
+  let pac=base.pac+weight, sedex=base.sedex+weight;
+  if(total>=299){ pac=0; sedex=Math.max(9.9,sedex-10); }
+  return {pac, sedex, pacDays:base.pacDays, sedexDays:base.sedexDays};
+}
+function getSubtotal(){ return cart.reduce((s,i)=>s+Number(i.price)*(Number(i.qty)||1),0); }
+
+let appliedCoupon = null;
+
+function loadCouponsDb_(){
+  try{
+    const raw = localStorage.getItem('gaby_store_db_v2');
+    const db = raw ? JSON.parse(raw) : {};
+    return Array.isArray(db.coupons) ? db.coupons : [];
+  }catch(e){ return []; }
+}
+function persistCouponUsed_(code, email){
+  try{
+    const raw = localStorage.getItem('gaby_store_db_v2');
+    const db = raw ? JSON.parse(raw) : {};
+    db.coupons = Array.isArray(db.coupons) ? db.coupons : [];
+    const i = db.coupons.findIndex(c => String(c.code).toUpperCase() === String(code).toUpperCase());
+    if(i >= 0){
+      db.coupons[i].used = true;
+      db.coupons[i].usedAt = new Date().toISOString();
+      db.coupons[i].usedBy = email || db.coupons[i].usedBy || '';
+    }
+    localStorage.setItem('gaby_store_db_v2', JSON.stringify(db));
+  }catch(e){}
+}
+function findCoupon_(code){
+  const c = String(code||'').trim().toUpperCase();
+  if(!c) return null;
+  return loadCouponsDb_().find(x => String(x.code||'').toUpperCase() === c) || null;
+}
+function getCouponDiscountAmount_(sub, shipPrice, payMethod){
+  if(!appliedCoupon) return {discount:0, freeShip:false, ship: shipPrice, pct:0};
+  const p = Number(appliedCoupon.percent)||0;
+  let extra = 0;
+  let limitExtra = 0;
+  const limitBase = Math.max(0, Number(appliedCoupon.percentLimit)||0);
+  const pm = String(payMethod||paymentMethod||'').toLowerCase();
+  if(pm.includes('pix')){
+    extra = Number(appliedCoupon.pixExtra)||0;
+    limitExtra = Math.max(0, Number(appliedCoupon.pixLimit)||0);
+  } else if(pm.includes('boleto')){
+    extra = Number(appliedCoupon.boletoExtra)||0;
+    limitExtra = Math.max(0, Number(appliedCoupon.boletoLimit)||0);
+  } else if(pm.includes('débito') || pm.includes('debito')){
+    extra = Number(appliedCoupon.debitoExtra)||0;
+    limitExtra = Math.max(0, Number(appliedCoupon.debitoLimit)||0);
+  }
+  let discBase = +(sub * (Math.min(95, p)/100)).toFixed(2);
+  if(limitBase > 0) discBase = Math.min(discBase, limitBase);
+  let discExtra = +(sub * (Math.min(95, extra)/100)).toFixed(2);
+  if(limitExtra > 0) discExtra = Math.min(discExtra, limitExtra);
+  const discount = +(discBase + discExtra).toFixed(2);
+  const shipMin = Math.max(0, Number(appliedCoupon.freeShippingMin)||0);
+  const freeShip = !!appliedCoupon.freeShipping && sub >= shipMin;
+  const pct = Math.min(95, p + extra);
+  return {discount, freeShip, ship: freeShip ? 0 : shipPrice, pct, shipMin};
+}
+function applyCoupon(){
+  const input = document.getElementById('couponInput');
+  const msg = document.getElementById('couponMsg');
+  const code = (input?.value || '').trim().toUpperCase();
+  if(!code){ if(msg) msg.innerHTML = '<span class="text-danger">Digite o cupom.</span>'; return; }
+  const email = (document.getElementById('ckEmail')?.value || '').trim().toLowerCase();
+  const c = findCoupon_(code);
+  if(!c){ appliedCoupon = null; if(msg) msg.innerHTML = '<span class="text-danger">Cupom inválido.</span>'; renderSummary(); return; }
+  if(c.used){ appliedCoupon = null; if(msg) msg.innerHTML = '<span class="text-danger">Cupom já utilizado.</span>'; renderSummary(); return; }
+  if(c.expiresAt && Date.now() > Number(c.expiresAt)){
+    appliedCoupon = null; if(msg) msg.innerHTML = '<span class="text-danger">Cupom expirado.</span>'; renderSummary(); return;
+  }
+  // único por cliente
+  if((c.scope==='unique' || c.email) && c.email){
+    if(!email){ appliedCoupon=null; if(msg) msg.innerHTML='<span class="text-danger">Informe o e-mail do cliente para usar este cupom.</span>'; renderSummary(); return; }
+    if(String(c.email).toLowerCase() !== email){
+      appliedCoupon = null;
+      if(msg) msg.innerHTML = '<span class="text-danger">Este cupom é exclusivo de outro cliente.</span>';
+      renderSummary(); return;
+    }
+  }
+  // categoria: carrinho só pode ter itens dessa categoria
+  if(c.category){
+    const cats = cart.map(i => String(i.category||i.categoria||'').trim()).filter(Boolean);
+    const bad = cats.some(cat => cat.toLowerCase() !== String(c.category).toLowerCase());
+    if(cats.length && bad){
+      appliedCoupon = null;
+      if(msg) msg.innerHTML = '<span class="text-danger">Cupom válido só para '+String(c.category)+'. Remova itens de outras categorias.</span>';
+      renderSummary(); return;
+    }
+    if(!cats.length){
+      // tenta validar pelo nome se não houver category no item — permite e avisa
+    }
+  }
+  appliedCoupon = c;
+  if(msg) msg.innerHTML = '<span class="text-success">Cupom aplicado!</span>';
+  renderSummary();
+}
+function getTotal(){
+  const sub = getSubtotal();
+  const ship = Number(shipping.price)||0;
+  const d = getCouponDiscountAmount_(sub, ship, paymentMethod);
+  return Math.max(0, sub - d.discount + d.ship);
+}
+
+function getTotalBase_(){ return getSubtotal()+(Number(shipping.price)||0); }
+
+function selectPay(el){
+  document.querySelectorAll('#payOptionsGrid .pay-option').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  paymentMethod=el.dataset.pay;
+  const badge=document.getElementById('payBadge'), days=document.getElementById('payDays'), hint=document.getElementById('payHint');
+  let icon='bi-upc', dayTxt='3 dias úteis', dayBg='#fff3e0', dayColor='#c47a12';
+  if(paymentMethod==='Pix'){ icon='bi-qr-code'; dayTxt='Imediato'; dayBg='#e6f7ed'; dayColor='#1a7a45'; }
+  else if(paymentMethod==='Cartão de Crédito'){ icon='bi-credit-card-2-front'; dayTxt='Até 6x'; dayBg='#fce8f1'; dayColor='var(--pink)'; }
+  else if(paymentMethod==='Cartão de Débito'){ icon='bi-credit-card'; dayTxt='À vista'; dayBg='#eef2ff'; dayColor='#3b5bdb'; }
+  badge.innerHTML=`<i class="bi ${icon}"></i> FORMA ESCOLHIDA · ${paymentMethod}`;
+  days.textContent=dayTxt; days.style.background=dayBg; days.style.color=dayColor;
+  hint.innerHTML=`<i class="bi bi-box-arrow-up-right me-1"></i>Abrirá direto a tela de ${paymentMethod}.`;
+}
+
+function selectShip(method, price, days){
+  shipping={ method, price:Number(price)||0, days:days||'' };
+  document.querySelectorAll('.ship-opt').forEach(x=>x.classList.toggle('active', x.dataset.method===method));
+  renderSummary();
+}
+
+function renderShipOptions(){
+  const box=document.getElementById('shipOptions'), sub=getSubtotal(), q=shippingQuote(cep, sub);
+  if(!q){
+    box.innerHTML='<div class="text-secondary small">Informe um CEP válido para calcular PAC e SEDEX.</div>';
+    shipping={ method:'PAC', price:0, days:'' }; renderSummary(); return;
+  }
+  if(!shipping.method) shipping.method='PAC';
+  shipping.price = shipping.method==='SEDEX' ? q.sedex : q.pac;
+  shipping.days = shipping.method==='SEDEX' ? q.sedexDays : q.pacDays;
+  box.innerHTML=`
+    <div class="ship-opt flex-fill ${shipping.method==='PAC'?'active':''}" data-method="PAC" onclick="selectShip('PAC', ${q.pac}, '${q.pacDays}')">
+      <div class="d-flex justify-content-between align-items-center">
+        <div><strong>PAC dos Correios</strong><div class="small text-secondary">${q.pacDays}</div></div>
+        <strong style="color:${q.pac===0?'#e72b76':'inherit'};font-weight:800">${q.pac===0?'GRÁTIS':money(q.pac)}</strong>
+      </div>
+    </div>
+    <div class="ship-opt flex-fill ${shipping.method==='SEDEX'?'active':''}" data-method="SEDEX" onclick="selectShip('SEDEX', ${q.sedex}, '${q.sedexDays}')">
+      <div class="d-flex justify-content-between align-items-center">
+        <div><strong>SEDEX Expresso</strong><div class="small text-secondary">${q.sedexDays}</div></div>
+        <strong style="font-weight:800">${money(q.sedex)}</strong>
+      </div>
+    </div>`;
+  renderSummary();
+}
+
+function onCepBlur(){
+  const input=document.getElementById('ckCep');
+  cep=onlyDigits(input.value); input.value=formatCep(cep);
+  localStorage.setItem('gaby_cep', cep); renderShipOptions();
+  if(validCep(cep)){
+    fetch('https://viacep.com.br/ws/'+cep+'/json/').then(r=>r.json()).then(d=>{
+      if(d&&!d.erro){
+        if(!document.getElementById('ckRua').value) document.getElementById('ckRua').value=d.logradouro||'';
+        if(!document.getElementById('ckBairro').value) document.getElementById('ckBairro').value=d.bairro||'';
+        if(!document.getElementById('ckCidade').value) document.getElementById('ckCidade').value=d.localidade||'';
+        if(!document.getElementById('ckUf').value) document.getElementById('ckUf').value=d.uf||'';
+      }
+    }).catch(()=>{});
+  }
+}
+
+function renderItems(){
+  const box=document.getElementById('orderItems');
+  if(!cart.length){ box.innerHTML=''; return; }
+  box.innerHTML=cart.map(item=>`
+    <div class="item-row">
+      <img src="${item.image||''}" alt="">
+      <div class="flex-grow-1">
+        <div class="fw-bold small">${esc(item.name)}</div>
+        <div class="text-secondary" style="font-size:.72rem">${esc(item.size||'P')} • ${esc(item.color||'Preto')} • Qtd: ${item.qty||1}</div>
+      </div>
+      <div class="fw-bold small">${money(Number(item.price)*(Number(item.qty)||1))}</div>
+    </div>`).join('');
+}
+
+function renderSummary(){
+  const sub=getSubtotal(), qty=cart.reduce((n,i)=>n+(Number(i.qty)||1),0);
+  const shipRaw=Number(shipping.price)||0;
+  const d=getCouponDiscountAmount_(sub, shipRaw, paymentMethod);
+  const total=Math.max(0, sub - d.discount + d.ship);
+  document.getElementById('sumSubtotal').textContent=money(sub);
+  document.getElementById('sumQty').textContent=qty;
+  document.getElementById('sumShipMethod').textContent=shipping.method||'PAC';
+  document.getElementById('sumFrete').textContent=d.freeShip?'GRÁTIS':(shipping.days?money(d.ship):'—');
+  const cLine=document.getElementById('sumCouponLine');
+  if(cLine){
+    if(appliedCoupon && d.discount>0){
+      cLine.classList.remove('d-none');
+      document.getElementById('sumCouponCode').textContent=appliedCoupon.code||'—';
+      document.getElementById('sumCouponDiscount').textContent='- '+money(d.discount)+(d.pct?` (${d.pct}%)`:'');
+    } else if(appliedCoupon && d.freeShip){
+      cLine.classList.remove('d-none');
+      document.getElementById('sumCouponCode').textContent=appliedCoupon.code||'—';
+      document.getElementById('sumCouponDiscount').textContent='Frete grátis';
+    } else {
+      cLine.classList.add('d-none');
+    }
+  }
+  document.getElementById('sumTotal').textContent=money(total);
+  document.getElementById('btnTotal').textContent=money(total);
+  ['pixTotal','boletoTotal','boletoValor','credTotal','debTotal','debHintTotal','mpTotal'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=money(total);
+  });
+  const sel=document.getElementById('credParcelas');
+  if(sel){
+    let opts='';
+    for(let i=1;i<=6;i++){ const v=total/i; opts+=`<option value="${i}">${i}x de ${money(v)}${i===1?' (à vista)':''}</option>`; }
+    sel.innerHTML=opts;
+  }
+}
+
+
+/* ===== Mercado Pago integrado aos métodos da loja ===== */
+const MP_PUBLIC_KEY = 'APP_USR-77fbb705-69f6-4334-b1c5-e62ae3f235c4';
+const MP_ACCESS_TOKEN = 'APP_USR-798594934317014-090120-786513793dfbfaa8b1aa358fb7f7fff9-3659527026';
+
+let __mpLastPayment = null; // { id, status, method, orderId }
+
+function getCheckoutTotalAmount_(){
+  const sub = getSubtotal();
+  const shipRaw = Number(shipping.price)||0;
+  const d = getCouponDiscountAmount_(sub, shipRaw, paymentMethod);
+  return Math.max(0.01, Math.round((sub - d.discount + d.ship) * 100) / 100);
+}
+
+async function mpFetch_(url, options){
+  try{
+    return await fetch(url, options);
+  }catch(e){
+    return fetch('https://corsproxy.io/?' + encodeURIComponent(url), options);
+  }
+}
+
+function mpPayerBase_(){
+  const nome = (document.getElementById('ckNome')?.value || 'Cliente').trim();
+  const email = (document.getElementById('ckEmail')?.value || '').trim();
+  const cpf = onlyDigits(document.getElementById('ckCpf')?.value || '');
+  const parts = nome.split(/\s+/).filter(Boolean);
+  const payer = {
+    email: email || 'cliente@gabystore.local',
+    first_name: parts[0] || 'Cliente',
+    last_name: parts.slice(1).join(' ') || 'Gaby'
+  };
+  if(cpf.length === 11){
+    payer.identification = { type: 'CPF', number: cpf };
+  }
+  return payer;
+}
+
+async function mpCreatePayment_(body){
+  const orderKey = 'GS' + Date.now().toString().slice(-10);
+  const res = await mpFetch_('https://api.mercadopago.com/v1/payments', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + MP_ACCESS_TOKEN,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Idempotency-Key': orderKey
+    },
+    body: JSON.stringify({
+      ...body,
+      external_reference: body.external_reference || orderKey,
+      description: body.description || ('Pedido Gaby Store ' + orderKey),
+      statement_descriptor: 'GABY STORE'
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok){
+    const cause = data && Array.isArray(data.cause) && data.cause[0] ? (data.cause[0].description || data.cause[0].code) : '';
+    const msg = (data && (data.message || data.error)) || cause || ('HTTP ' + res.status);
+    throw new Error(typeof msg === 'string' ? msg : 'Falha no Mercado Pago');
+  }
+  return data;
+}
+
+async function prepareMpPix_(){
+  const status = document.getElementById('pixMpStatus');
+  const codeEl = document.getElementById('pixCode');
+  const img = document.getElementById('pixQrImg');
+  const fb = document.getElementById('pixQrFallback');
+  if(status) status.textContent = 'Gerando Pix pelo Mercado Pago…';
+  if(codeEl) codeEl.textContent = 'Aguardando…';
+  if(img){ img.classList.add('d-none'); img.removeAttribute('src'); }
+  if(fb) fb.classList.remove('d-none');
+
+  try{
+    const amount = getCheckoutTotalAmount_();
+    const payment = await mpCreatePayment_({
+      transaction_amount: amount,
+      payment_method_id: 'pix',
+      payer: mpPayerBase_()
+    });
+    __mpLastPayment = { id: payment.id, status: payment.status, method: 'pix', raw: payment };
+
+    const tx = (payment.point_of_interaction && payment.point_of_interaction.transaction_data) || {};
+    const qrCode = tx.qr_code || '';
+    const qrBase64 = tx.qr_code_base64 || '';
+
+    if(codeEl) codeEl.textContent = qrCode || ('Pagamento Pix #' + payment.id);
+    if(qrBase64 && img){
+      img.src = 'data:image/png;base64,' + qrBase64.replace(/^data:image\/\w+;base64,/, '');
+      img.classList.remove('d-none');
+      if(fb) fb.classList.add('d-none');
+    }
+    if(status){
+      status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Pix gerado via Mercado Pago</span> · ID ' + payment.id;
+    }
+  }catch(err){
+    console.error(err);
+    if(status) status.innerHTML = '<span class="text-danger">Não foi possível gerar o Pix: ' + String(err.message||err) + '</span>';
+    if(codeEl) codeEl.textContent = 'Erro ao gerar Pix';
+    Swal.fire({ icon:'error', title:'Pix indisponível', text:String(err.message||err), confirmButtonColor:'#e72b76' });
+  }
+}
+
+async function prepareMpBoleto_(){
+  const status = document.getElementById('boletoMpStatus');
+  if(status) status.textContent = 'Gerando boleto pelo Mercado Pago…';
+
+  const cpf = onlyDigits(document.getElementById('ckCpf')?.value || '');
+  if(cpf.length !== 11){
+    if(status) status.innerHTML = '<span class="text-danger">Informe um CPF válido no formulário para gerar o boleto.</span>';
+    Swal.fire({ icon:'warning', title:'CPF necessário', text:'Preencha o CPF do cliente para emitir o boleto no Mercado Pago.', confirmButtonColor:'#e72b76' });
+    return;
+  }
+
+  try{
+    const amount = getCheckoutTotalAmount_();
+    const payer = mpPayerBase_();
+    payer.identification = { type: 'CPF', number: cpf };
+    // endereço ajuda na emissão
+    const zip = onlyDigits(cep);
+    if(zip.length === 8){
+      payer.address = {
+        zip_code: zip,
+        street_name: (document.getElementById('ckRua')?.value || 'Rua').trim() || 'Rua',
+        street_number: (document.getElementById('ckNumero')?.value || '0').trim() || '0',
+        neighborhood: (document.getElementById('ckBairro')?.value || 'Centro').trim() || 'Centro',
+        city: (document.getElementById('ckCidade')?.value || 'Cidade').trim() || 'Cidade',
+        federal_unit: (document.getElementById('ckUf')?.value || 'SP').trim().toUpperCase() || 'SP'
+      };
+    }
+
+    const payment = await mpCreatePayment_({
+      transaction_amount: amount,
+      payment_method_id: 'bolbradesco',
+      payer
+    });
+    __mpLastPayment = { id: payment.id, status: payment.status, method: 'boleto', raw: payment };
+
+    const tx = (payment.point_of_interaction && payment.point_of_interaction.transaction_data) || {};
+    const digitable = tx.digitable_line || tx.barcode || (payment.transaction_details && payment.transaction_details.digitable_line) || '';
+    const ticketUrl = tx.ticket_url || payment.transaction_details?.external_resource_url || '';
+
+    const codeEl = document.getElementById('boletoCode');
+    if(codeEl && digitable) codeEl.textContent = digitable;
+
+    if(payment.date_of_expiration){
+      try{
+        const venc = document.getElementById('boletoVenc');
+        if(venc) venc.textContent = new Date(payment.date_of_expiration).toLocaleDateString('pt-BR');
+      }catch(e){}
+    }
+
+    if(status){
+      status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Boleto gerado via Mercado Pago</span> · ID ' + payment.id +
+        (ticketUrl ? (' · <a href="'+ticketUrl+'" target="_blank" rel="noopener">Abrir boleto</a>') : '');
+    }
+  }catch(err){
+    console.error(err);
+    if(status) status.innerHTML = '<span class="text-danger">Não foi possível gerar o boleto: ' + String(err.message||err) + '</span>';
+    Swal.fire({ icon:'error', title:'Boleto indisponível', text:String(err.message||err), confirmButtonColor:'#e72b76' });
+  }
+}
+
+async function processMpCardPayment_(kind){
+  // kind: 'credit' | 'debit'
+  if(typeof MercadoPago === 'undefined'){
+    throw new Error('SDK do Mercado Pago não carregou. Verifique a internet.');
+  }
+  const isCredit = kind === 'credit';
+  const num = onlyDigits(document.getElementById(isCredit ? 'credNumero' : 'debNumero')?.value || '');
+  const nome = (document.getElementById(isCredit ? 'credNome' : 'debNome')?.value || '').trim();
+  const val = (document.getElementById(isCredit ? 'credValidade' : 'debValidade')?.value || '').trim();
+  const cvv = onlyDigits(document.getElementById(isCredit ? 'credCvv' : 'debCvv')?.value || '');
+  const cpf = onlyDigits(document.getElementById(isCredit ? 'credCpf' : 'debCpf')?.value || document.getElementById('ckCpf')?.value || '');
+  const parcelas = isCredit ? Math.max(1, parseInt(document.getElementById('credParcelas')?.value || '1', 10) || 1) : 1;
+
+  if(num.length < 13) throw new Error('Número do cartão inválido.');
+  if(!nome) throw new Error('Informe o nome impresso no cartão.');
+  const vm = val.match(/^(\d{2})\s*\/\s*(\d{2})$/);
+  if(!vm) throw new Error('Validade no formato MM/AA.');
+  if(cvv.length < 3) throw new Error('CVV inválido.');
+  if(cpf.length !== 11) throw new Error('Informe o CPF do titular (11 dígitos).');
+
+  const mp = new MercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+  const tokenData = await mp.createCardToken({
+    cardNumber: num,
+    cardholderName: nome,
+    cardExpirationMonth: vm[1],
+    cardExpirationYear: vm[2],
+    securityCode: cvv,
+    identificationType: 'CPF',
+    identificationNumber: cpf
+  });
+  const token = tokenData && (tokenData.id || tokenData);
+  if(!token) throw new Error('Não foi possível tokenizar o cartão.');
+
+  // descobrir bandeira
+  let paymentMethodId = 'visa';
+  try{
+    const methods = await mp.getPaymentMethods({ bin: num.slice(0, 6) });
+    if(methods && methods.results && methods.results[0]){
+      paymentMethodId = methods.results[0].id || paymentMethodId;
+    }
+  }catch(e){}
+
+  const amount = getCheckoutTotalAmount_();
+  const payment = await mpCreatePayment_({
+    transaction_amount: amount,
+    token: String(token),
+    installments: parcelas,
+    payment_method_id: paymentMethodId,
+    payer: {
+      email: (document.getElementById('ckEmail')?.value || '').trim(),
+      identification: { type: 'CPF', number: cpf }
+    }
+  });
+
+  __mpLastPayment = { id: payment.id, status: payment.status, method: isCredit ? 'credit' : 'debit', raw: payment };
+
+  const st = String(payment.status || '').toLowerCase();
+  if(st === 'approved') return payment;
+  if(st === 'pending' || st === 'in_process') return payment;
+  const detail = payment.status_detail || st || 'recusado';
+  throw new Error('Pagamento não aprovado: ' + detail);
+}
+
+function handleMercadoPagoReturn_(){ /* legado */ }
+
+
+function openPaymentScreen(){
+  if(!cart.length){ Swal.fire({icon:'warning',title:'Carrinho vazio',confirmButtonColor:'#e72b76'}); return; }
+  const nome=document.getElementById('ckNome').value.trim(), email=document.getElementById('ckEmail').value.trim();
+  if(!nome||!email){ Swal.fire({icon:'warning',title:'Preencha nome e e-mail',confirmButtonColor:'#e72b76'}); return; }
+  if(!validCep(cep)){ Swal.fire({icon:'warning',title:'Informe um CEP válido',confirmButtonColor:'#e72b76'}); return; }
+  renderSummary();
+  document.getElementById('boletoPagador').textContent=nome||'Cliente';
+  const d=new Date(); d.setDate(d.getDate()+3);
+  document.getElementById('boletoVenc').textContent=d.toLocaleDateString('pt-BR');
+  closePayScreens();
+  const map={'Pix':'screenPix','Boleto':'screenBoleto','Cartão de Crédito':'screenCredito','Cartão de Débito':'screenDebito'};
+  document.getElementById(map[paymentMethod]||'screenBoleto').classList.add('show');
+  // Gera cobrança real no Mercado Pago conforme o método
+  if(paymentMethod === 'Pix'){
+    prepareMpPix_();
+  } else if(paymentMethod === 'Boleto'){
+    prepareMpBoleto_();
+  }
+}
+function closePayScreens(){ document.querySelectorAll('.pay-screen').forEach(s=>s.classList.remove('show')); }
+function copyPix(){ navigator.clipboard.writeText(document.getElementById('pixCode').textContent).then(()=>Swal.fire({toast:true,position:'top',icon:'success',title:'Código Pix copiado!',showConfirmButton:false,timer:1800})); }
+function copyBoleto(){ navigator.clipboard.writeText(document.getElementById('boletoCode').textContent).then(()=>Swal.fire({toast:true,position:'top',icon:'success',title:'Código do boleto copiado!',showConfirmButton:false,timer:1800})); }
+
+function localDbRead_(){
+  try{
+    const raw=localStorage.getItem('gaby_store_db_v2');
+    const db=raw?JSON.parse(raw):{};
+    return {
+      products:Array.isArray(db.products)?db.products:[],
+      orders:Array.isArray(db.orders)?db.orders:[],
+      banners:Array.isArray(db.banners)?db.banners:[],
+      customers:Array.isArray(db.customers)?db.customers:[],
+      coupons:Array.isArray(db.coupons)?db.coupons:[]
+    };
+  }catch(e){ return {products:[],orders:[],banners:[],customers:[],coupons:[]}; }
+}
+function localDbWrite_(db){
+  localStorage.setItem('gaby_store_db_v2',JSON.stringify({...db,updatedAt:new Date().toISOString()}));
+  localStorage.setItem('gaby_store_db_rev',JSON.stringify({t:Date.now()}));
+}
+async function localApiPost_(action,payload){
+  const db=localDbRead_(); const p=payload||{};
+  if(action==='createCustomer'){
+    const email=String(p.email||'').toLowerCase();
+    const idx=db.customers.findIndex(x=>String(x.email||'').toLowerCase()===email);
+    if(idx>=0) db.customers[idx]={...db.customers[idx],...p}; else db.customers.unshift({...p,email});
+    localDbWrite_(db); return db.customers.find(x=>String(x.email||'').toLowerCase()===email);
+  }
+  if(action==='createOrder'){
+    const idx=db.orders.findIndex(x=>String(x.id)===String(p.id));
+    if(idx>=0) db.orders[idx]={...db.orders[idx],...p}; else db.orders.unshift({...p});
+    localDbWrite_(db); return p;
+  }
+  return null;
+}
+
+async function finalizeOrder(payLabel){
+  const nome=document.getElementById('ckNome').value.trim();
+  const email=document.getElementById('ckEmail').value.trim().toLowerCase();
+  const telefone=document.getElementById('ckTelefone').value.trim();
+  const cpf=document.getElementById('ckCpf').value.trim();
+  const rua=document.getElementById('ckRua').value.trim(), numero=document.getElementById('ckNumero').value.trim();
+  const complemento=document.getElementById('ckComplemento').value.trim(), bairro=document.getElementById('ckBairro').value.trim();
+  const cidade=document.getElementById('ckCidade').value.trim(), uf=document.getElementById('ckUf').value.trim();
+  const endereco=[rua, numero?'Nº '+numero:'', complemento, bairro, cidade+(uf?'/'+uf:''), 'CEP: '+formatCep(cep)].filter(Boolean).join(', ');
+  const sub=getSubtotal(), total=getTotal();
+  const itensTxt=cart.map(i=>`${i.qty||1}x ${i.name} (${i.size||'Único'}/${i.color||'Único'})`).join('; ');
+  const itensDetalhados=cart.map(i=>({name:i.name,qty:Number(i.qty)||1,price:Number(i.price)||0,size:i.size||'Único',color:i.color||'Único',image:i.image||''}));
+  let orderId='ped'+Date.now();
+  const btn=document.getElementById('btnConfirm');
+  btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Processando...';
+  try{
+    // Cartões: cobra no Mercado Pago antes de gravar o pedido
+    const label = String(payLabel || paymentMethod || '');
+    if(label === 'Cartão de Crédito' || label === 'Cartão de Débito'){
+      try{
+        Swal.fire({ title:'Processando no Mercado Pago…', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+        const pay = await processMpCardPayment_(label === 'Cartão de Crédito' ? 'credit' : 'debit');
+        if(__mpLastPayment && __mpLastPayment.id){
+          orderId = 'MP' + __mpLastPayment.id;
+        }
+        const st = String(pay.status||'').toLowerCase();
+        if(st !== 'approved' && st !== 'pending' && st !== 'in_process'){
+          throw new Error(pay.status_detail || 'Pagamento não aprovado');
+        }
+      }catch(mpErr){
+        btn.disabled=false; btn.innerHTML='<i class="bi bi-receipt me-1"></i>Confirmar Pagamento (<span id="btnTotal">'+money(getTotal())+'</span>)';
+        Swal.fire({ icon:'error', title:'Pagamento recusado', text:String(mpErr.message||mpErr), confirmButtonColor:'#e72b76' });
+        return;
+      }
+    } else if(label === 'Pix' || label === 'Boleto'){
+      // usa cobrança já gerada na tela
+      if(__mpLastPayment && __mpLastPayment.id){
+        orderId = 'MP' + __mpLastPayment.id;
+      }
+    }
+    closePayScreens();
+
+    const db=localDbRead_();
+    const customer={email,nome,sobrenome:'',cpf,telefone,criadoEm:new Date().toISOString()};
+    const cidx=db.customers.findIndex(x=>String(x.email||'').toLowerCase()===email);
+    if(cidx>=0) db.customers[cidx]={...db.customers[cidx],...customer};
+    else db.customers.unshift(customer);
+    const orderPayload={
+      id:orderId, cliente:nome, clienteEmail:email, userEmail:email, data:new Date().toISOString(),
+      telefone, endereco, enderecoDetalhado:{cep:cep, rua, numero, complemento, bairro, cidade, uf}, itens:itensTxt, total, status:'A enviar', rastreio:'',
+      pagamento:(payLabel||paymentMethod)+(__mpLastPayment&&__mpLastPayment.id?(' · MP #'+__mpLastPayment.id):'')+(shipping.method?' / Frete '+shipping.method+(shipping.price?' ('+money(shipping.price)+')':''):''),
+      frete:Number(shipping.price)||0, freteMetodo:shipping.method||'PAC', prazo:shipping.days||'',
+      itensDetalhados
+    };
+    if(appliedCoupon){
+      orderPayload.cupom=appliedCoupon.code;
+      orderPayload.cupomDesconto=getCouponDiscountAmount_(sub, Number(shipping.price)||0, payLabel||paymentMethod).discount;
+      try{ persistCouponUsed_(appliedCoupon.code, email); }catch(e){}
+    }
+    db.orders.unshift(orderPayload);
+    localDbWrite_(db);
+    try{ const lo=JSON.parse(localStorage.getItem('gaby_orders')||'[]'); lo.unshift(orderPayload); localStorage.setItem('gaby_orders',JSON.stringify(lo.slice(0,50))); }catch(e){}
+    localStorage.removeItem('gaby_cart'); cart=[];
+    try{
+      const em = String(localStorage.getItem('gaby_current_user')||'').trim().toLowerCase();
+      if(em) localStorage.removeItem('gaby_cart__'+em);
+      sessionStorage.removeItem('gaby_cart_guest');
+    }catch(e){}
+    await Swal.fire({icon:'success',title:'Pedido confirmado!',html:`<p>Número do pedido: <strong>${orderId}</strong></p><p class="mb-0 small text-secondary">Total ${money(total)} • ${payLabel||paymentMethod}</p>`,confirmButtonColor:'#e72b76',confirmButtonText:'Voltar à loja'});
+    window.location.href='GabyStore_LOCALSTORAGE.html';
+  }catch(err){
+    Swal.fire({icon:'error',title:'Não foi possível registrar o pedido',text:String(err.message||err),confirmButtonColor:'#e72b76'});
+    btn.disabled=false; btn.innerHTML='<i class="bi bi-receipt me-1"></i>Confirmar Pagamento (<span id="btnTotal">'+money(getTotal())+'</span>)';
+  }
+}
+
+function loadCheckoutCart_(){
+  try{
+    const email = String(localStorage.getItem('gaby_current_user')||'').trim().toLowerCase();
+    if(email && email.includes('@')){
+      const raw = localStorage.getItem('gaby_cart__'+email) || localStorage.getItem('gaby_cart') || '[]';
+      return JSON.parse(raw);
+    }
+    // visitante: session
+    const raw = sessionStorage.getItem('gaby_cart_guest') || localStorage.getItem('gaby_cart') || '[]';
+    return JSON.parse(raw);
+  }catch(e){ return []; }
+}
+function loadUserProfileForCheckout_(){
+  let u = null;
+  try{ u = JSON.parse(localStorage.getItem('gaby_user')||'null'); }catch(e){}
+  try{
+    const email = String(localStorage.getItem('gaby_current_user')||'').trim().toLowerCase();
+    if(email){
+      // tenta customers do banco
+      try{
+        const db = JSON.parse(localStorage.getItem('gaby_store_db_v2')||'{}');
+        const c = (db.customers||[]).find(x => String(x.email||'').toLowerCase()===email);
+        if(c){
+          u = {
+            nome: c.nome || c.name || (u&&u.nome) || '',
+            sobrenome: c.sobrenome || '',
+            email: c.email,
+            telefone: c.telefone || c.phone || '',
+            cpf: c.cpf || '',
+            endereco: c.endereco || c.address || {}
+          };
+        }
+      }catch(e){}
+      try{
+        const users = JSON.parse(localStorage.getItem('gaby_users')||'[]');
+        const c = (users||[]).find(x => String(x.email||'').toLowerCase()===email);
+        if(c){
+          u = {
+            nome: c.name || c.nome || (u&&u.nome) || '',
+            sobrenome: c.sobrenome || '',
+            email: c.email,
+            telefone: c.phone || c.telefone || '',
+            cpf: c.cpf || '',
+            endereco: c.address || c.endereco || {}
+          };
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+  return u;
+}
+function init(){
+  try{ cart=loadCheckoutCart_(); }catch(e){ cart=[]; }
+  if(!Array.isArray(cart)) cart=[];
+  cart=cart.map(i=>({...i, qty:Number(i.qty)||1}));
+  try{ const s=JSON.parse(localStorage.getItem('gaby_shipping')||'null'); if(s) shipping=s; }catch(e){}
+  try{
+    const u = loadUserProfileForCheckout_();
+    if(u&&typeof u==='object'){
+      const nome=(u.nome||u.name||'').trim();
+      const fullName = (nome + (u.sobrenome?' '+u.sobrenome:'')).trim();
+      if(fullName) document.getElementById('ckNome').value=fullName;
+      if(u.email) document.getElementById('ckEmail').value=u.email;
+      if(u.telefone||u.phone) document.getElementById('ckTelefone').value=u.telefone||u.phone;
+      if(u.cpf) document.getElementById('ckCpf').value=u.cpf;
+      document.getElementById('clientName').textContent=fullName||nome||'Cliente';
+      document.getElementById('clientEmail').textContent=u.email||'';
+      document.getElementById('clientAvatar').textContent=(fullName||nome||'G').charAt(0).toUpperCase();
+      const addr = u.endereco || u.address || {};
+      if(addr.cep){
+        const cd = onlyDigits(addr.cep);
+        if(cd.length===8){
+          cep = cd;
+          document.getElementById('ckCep').value=formatCep(cd);
+          localStorage.setItem('gaby_cep', cd);
+        }
+      }
+      if(addr.rua && document.getElementById('ckRua')) document.getElementById('ckRua').value = addr.rua;
+      if(addr.numero && document.getElementById('ckNumero')) document.getElementById('ckNumero').value = addr.numero;
+      if(addr.complemento && document.getElementById('ckComplemento')) document.getElementById('ckComplemento').value = addr.complemento;
+      if(addr.bairro && document.getElementById('ckBairro')) document.getElementById('ckBairro').value = addr.bairro;
+      if(addr.cidade && document.getElementById('ckCidade')) document.getElementById('ckCidade').value = addr.cidade;
+      if(addr.uf && document.getElementById('ckUf')) document.getElementById('ckUf').value = addr.uf;
+    }
+  }catch(e){}
+  if(!cep){
+    cep=onlyDigits(localStorage.getItem('gaby_cep')||'');
+    if(cep) document.getElementById('ckCep').value=formatCep(cep);
+  }
+  const boletoOpt=document.querySelector('[data-pay="Boleto"]');
+  if(boletoOpt) selectPay(boletoOpt);
+  if(!cart.length){
+    document.getElementById('emptyCart').classList.remove('d-none');
+    document.getElementById('checkoutWrap').classList.add('d-none');
+    return;
+  }
+  renderItems(); renderShipOptions(); renderSummary();
+}
+document.addEventListener('DOMContentLoaded', () => { try{ handleMercadoPagoReturn_(); }catch(e){} init(); });
+</script>
+</body>
+</html>
