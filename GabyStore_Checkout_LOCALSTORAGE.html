@@ -73,7 +73,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system
       <a href="GabyStore_LOCALSTORAGE.html" class="btn-pink">Continuar comprando</a>
     </div>
 
-    <div id="checkoutWrap" class="row g-3 g-lg-4">
+    <div id="sslWarnBanner" class="container mt-3 d-none">
+    <div class="alert alert-warning border-0 shadow-sm mb-0" style="border-radius:14px">
+      <div class="fw-bold mb-1"><i class="bi bi-shield-exclamation me-1"></i>Conexão sem HTTPS</div>
+      <div class="small mb-0">Cartão de crédito/débito pelo Mercado Pago só funciona em site com <b>HTTPS</b> ou em <b>localhost</b>. Publique a loja com certificado SSL para receber pagamentos no cartão.</div>
+    </div>
+  </div>
+  <div id="checkoutWrap" class="row g-3 g-lg-4">
       <div class="col-lg-7">
         <div class="client-chip" id="clientChip">
           <div class="d-flex align-items-center gap-3">
@@ -726,6 +732,26 @@ const MP_ACCESS_TOKEN = 'APP_USR-798594934317014-090120-786513793dfbfaa8b1aa358f
 
 let __mpLastPayment = null; // { id, status, method, orderId }
 
+function isMpSecureContext_(){
+  try{
+    if(window.isSecureContext === true) return true;
+    const p = String(location.protocol || '').toLowerCase();
+    const h = String(location.hostname || '').toLowerCase();
+    // localhost / 127.0.0.1 costumam ser aceitos pelo MP mesmo em http
+    if(h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return true;
+    return p === 'https:';
+  }catch(e){ return false; }
+}
+
+function mpSslRequiredMessage_(){
+  return 'O Mercado Pago só processa cartão em conexão segura (HTTPS).\n\n' +
+    'Como resolver:\n' +
+    '1) Publique a loja em um site com HTTPS (Netlify, Vercel, Hostinger, Cloudflare Pages)\n' +
+    '2) Ou teste em http://localhost (servidor local)\n\n' +
+    'Abrir o arquivo direto (file://) ou por HTTP sem SSL bloqueia cartão.\n' +
+    'Pix e boleto podem funcionar, mas cartão exige SSL.';
+}
+
 function getCheckoutTotalAmount_(){
   const sub = getSubtotal();
   const shipRaw = Number(shipping.price)||0;
@@ -733,11 +759,42 @@ function getCheckoutTotalAmount_(){
   return Math.max(0.01, Math.round((sub - d.discount + d.ship) * 100) / 100);
 }
 
+// URL do proxy na mesma hospedagem (PHP). Em Netlify/Vercel sem PHP, aponte para seu backend.
+const MP_PROXY_URL = 'mp-proxy.php';
+
+function mpProxyAvailableHint_(){
+  return 'Não foi possível falar com a API do Mercado Pago pelo navegador (CORS).\n\n' +
+    'Solução: envie o arquivo mp-proxy.php junto com a loja para uma hospedagem com PHP + HTTPS\n' +
+    '(Hostinger, InfinityFree, etc.) e abra o site pelo link https://...\n\n' +
+    'O proxy antigo (corsproxy) deixou de funcionar sem chave de API.';
+}
+
 async function mpFetch_(url, options){
+  // 1) Proxy local (mesmo domínio) — recomendado
+  try{
+    const proxyRes = await fetch(MP_PROXY_URL, options);
+    // se o servidor devolveu HTML (404 página), não é proxy válido
+    const ct = (proxyRes.headers.get('content-type') || '').toLowerCase();
+    if(proxyRes.status !== 404 && ct.indexOf('json') >= 0){
+      return proxyRes;
+    }
+    // se status ok e body json-like, use
+    if(proxyRes.ok){
+      const clone = proxyRes.clone();
+      try{
+        await clone.json();
+        return proxyRes;
+      }catch(e){}
+    }
+  }catch(e){
+    // proxy ausente — tenta direto
+  }
+
+  // 2) Chamada direta (só funciona se a API liberar CORS — em geral não)
   try{
     return await fetch(url, options);
   }catch(e){
-    return fetch('https://corsproxy.io/?' + encodeURIComponent(url), options);
+    throw new Error(mpProxyAvailableHint_());
   }
 }
 
@@ -759,26 +816,44 @@ function mpPayerBase_(){
 
 async function mpCreatePayment_(body){
   const orderKey = 'GS' + Date.now().toString().slice(-10);
-  const res = await mpFetch_('https://api.mercadopago.com/v1/payments', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + MP_ACCESS_TOKEN,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-Idempotency-Key': orderKey
-    },
-    body: JSON.stringify({
-      ...body,
-      external_reference: body.external_reference || orderKey,
-      description: body.description || ('Pedido Gaby Store ' + orderKey),
-      statement_descriptor: 'GABY STORE'
-    })
-  });
-  const data = await res.json().catch(() => ({}));
+  const payload = {
+    ...body,
+    external_reference: body.external_reference || orderKey,
+    description: body.description || ('Pedido Gaby Store ' + orderKey),
+    statement_descriptor: 'GABY STORE'
+  };
+  let res;
+  try{
+    res = await mpFetch_('https://api.mercadopago.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + MP_ACCESS_TOKEN,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Idempotency-Key': orderKey
+      },
+      body: JSON.stringify(payload)
+    });
+  }catch(e){
+    throw new Error(e.message || mpProxyAvailableHint_());
+  }
+
+  const text = await res.text();
+  let data = {};
+  try{ data = text ? JSON.parse(text) : {}; }catch(e){
+    if(/corsproxy|API key|Anonymous legacy/i.test(text)){
+      throw new Error(mpProxyAvailableHint_());
+    }
+    throw new Error('Resposta inválida do servidor de pagamento. Confira se mp-proxy.php está no ar.');
+  }
   if(!res.ok){
     const cause = data && Array.isArray(data.cause) && data.cause[0] ? (data.cause[0].description || data.cause[0].code) : '';
-    const msg = (data && (data.message || data.error)) || cause || ('HTTP ' + res.status);
-    throw new Error(typeof msg === 'string' ? msg : 'Falha no Mercado Pago');
+    let msg = (data && (data.message || data.error)) || cause || ('HTTP ' + res.status);
+    if(typeof msg !== 'string') msg = 'Falha no Mercado Pago';
+    if(/corsproxy|Anonymous legacy|API key/i.test(msg)){
+      throw new Error(mpProxyAvailableHint_());
+    }
+    throw new Error(msg);
   }
   return data;
 }
@@ -885,6 +960,9 @@ async function prepareMpBoleto_(){
 
 async function processMpCardPayment_(kind){
   // kind: 'credit' | 'debit'
+  if(!isMpSecureContext_()){
+    throw new Error(mpSslRequiredMessage_());
+  }
   if(typeof MercadoPago === 'undefined'){
     throw new Error('SDK do Mercado Pago não carregou. Verifique a internet.');
   }
@@ -966,6 +1044,21 @@ function openPaymentScreen(){
     prepareMpPix_();
   } else if(paymentMethod === 'Boleto'){
     prepareMpBoleto_();
+  } else if(paymentMethod === 'Cartão de Crédito' || paymentMethod === 'Cartão de Débito'){
+    if(!isMpSecureContext_()){
+      Swal.fire({
+        icon: 'warning',
+        title: 'HTTPS necessário',
+        html: '<p class="mb-2">O Mercado Pago <b>bloqueia cartão</b> sem certificado SSL.</p>' +
+          '<p class="small text-start mb-1"><b>Opções:</b></p>' +
+          '<ul class="small text-start">' +
+          '<li>Publicar a loja com <b>HTTPS</b> (Netlify, Vercel, Hostinger…)</li>' +
+          '<li>Testar em <b>http://localhost</b> com um servidor local</li>' +
+          '</ul>' +
+          '<p class="small text-secondary mb-0">Não use file:// nem HTTP inseguro para cartão.</p>',
+        confirmButtonColor: '#e72b76'
+      });
+    }
   }
 }
 function closePayScreens(){ document.querySelectorAll('.pay-screen').forEach(s=>s.classList.remove('show')); }
@@ -1179,7 +1272,7 @@ function init(){
   }
   renderItems(); renderShipOptions(); renderSummary();
 }
-document.addEventListener('DOMContentLoaded', () => { try{ handleMercadoPagoReturn_(); }catch(e){} init(); });
+document.addEventListener('DOMContentLoaded', () => { try{ handleMercadoPagoReturn_(); }catch(e){} try{ const b=document.getElementById('sslWarnBanner'); if(b && !isMpSecureContext_()) b.classList.remove('d-none'); }catch(e){} init(); });
 </script>
 </body>
 </html>
